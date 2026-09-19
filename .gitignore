@@ -1,0 +1,17 @@
+# Dataset — supervisor-provided, not tracked (large, not ours to redistribute)
+Dataset/
+code/data_external/
+code/cache/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/

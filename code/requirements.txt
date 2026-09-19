@@ -1,0 +1,19 @@
+# Core stack (§8/§9 of Causal_MoE_Architecture.md: PyG chosen over DGL,
+# CPU-only dev machine).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.13.0
+torch-geometric==2.8.0.post1
+
+numpy==1.26.4
+scipy==1.17.1
+pandas==2.3.3
+scikit-learn==1.9.0
+networkx==3.6.1
+matplotlib==3.11.0
+
+# §4.4 Channel 1 drift detector (ADWIN) -- real maintained library, not
+# reimplemented from scratch.
+river==0.22.0
+
+# Test runner.
+pytest==9.0.3

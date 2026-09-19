@@ -1,0 +1,26 @@
+{
+  "target": 22,
+  "variant": "direct",
+  "n_candidate_edges": 8,
+  "r": 0.375,
+  "n_samples": 4000,
+  "epochs": 2,
+  "cia_weight": 0.1,
+  "cia_bandwidth": 0.3,
+  "results_mse": {
+    "persistence": 0.025721115991473198,
+    "full_causal_splitter_cia": 0.03040343147846198,
+    "plain_gnn_all_edges": 0.02327925202466819,
+    "random_subset": 0.024097067769533766
+  },
+  "skill_vs_persistence": {
+    "persistence": 0.0,
+    "full_causal_splitter_cia": -0.1820416924577073,
+    "plain_gnn_all_edges": 0.09493615936472233,
+    "random_subset": 0.06314065931189838
+  },
+  "comparison_to_step8_no_cia": {
+    "note": "compare against results/step8_baselines_place22_direct.json -- same data/budget/other-baselines, only the full-model row differs (CIA added)",
+    "step8_full_causal_splitter_no_cia_mse": 0.02406
+  }
+}

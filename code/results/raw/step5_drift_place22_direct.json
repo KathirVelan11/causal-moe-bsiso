@@ -1,0 +1,85 @@
+{
+  "target": 22,
+  "variant": "direct",
+  "n_timesteps": 16060,
+  "n_candidate_sources": 8,
+  "train_years": 10,
+  "n_train_samples": 3652,
+  "train_end_date": "1989-01-09",
+  "detection_span": [
+    "1979-01-11",
+    "2022-12-30"
+  ],
+  "expert_mse_train_period": 0.024584410434630076,
+  "persistence_mse_train_period": 0.026026936247944832,
+  "windows": {
+    "abrupt_el_nino_1997_98": {
+      "channel1_error": {
+        "n_alarms": 1,
+        "detected_in_window": false,
+        "latency_days": null,
+        "false_alarms_outside_window": 1,
+        "false_alarm_rate_per_year": 0.0235
+      },
+      "channel2_causal": {
+        "n_alarms": 79,
+        "detected_in_window": true,
+        "latency_days": 17,
+        "false_alarms_outside_window": 76,
+        "false_alarm_rate_per_year": 1.7861
+      },
+      "fused_OR": {
+        "n_alarms": 80,
+        "detected_in_window": true,
+        "latency_days": 17,
+        "false_alarms_outside_window": 77,
+        "false_alarm_rate_per_year": 1.8096
+      },
+      "fused_AND": {
+        "n_alarms": 1,
+        "detected_in_window": false,
+        "latency_days": null,
+        "false_alarms_outside_window": 1,
+        "false_alarm_rate_per_year": 0.0235
+      },
+      "signal_contrast": {
+        "causal_distance_in_minus_out": 0.00014,
+        "error_in_minus_out": -0.00241
+      }
+    },
+    "gradual_drift_2013_2022": {
+      "channel1_error": {
+        "n_alarms": 1,
+        "detected_in_window": true,
+        "latency_days": 70,
+        "false_alarms_outside_window": 0,
+        "false_alarm_rate_per_year": 0.0
+      },
+      "channel2_causal": {
+        "n_alarms": 79,
+        "detected_in_window": true,
+        "latency_days": 33,
+        "false_alarms_outside_window": 61,
+        "false_alarm_rate_per_year": 1.7955
+      },
+      "fused_OR": {
+        "n_alarms": 80,
+        "detected_in_window": true,
+        "latency_days": 33,
+        "false_alarms_outside_window": 61,
+        "false_alarm_rate_per_year": 1.7955
+      },
+      "fused_AND": {
+        "n_alarms": 1,
+        "detected_in_window": true,
+        "latency_days": 70,
+        "false_alarms_outside_window": 0,
+        "false_alarm_rate_per_year": 0.0
+      },
+      "signal_contrast": {
+        "causal_distance_in_minus_out": -0.00016,
+        "error_in_minus_out": 0.0005
+      }
+    }
+  }
+}

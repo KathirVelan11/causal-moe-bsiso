@@ -1,0 +1,694 @@
+{
+  "variant": "direct",
+  "epochs": 2,
+  "n_samples_cap": 4000,
+  "gsina_iters": 20,
+  "n_places_done": 50,
+  "n_beating_persistence": 46,
+  "skill_mean": 0.09621396060763883,
+  "skill_median": 0.10450688059186919,
+  "places": [
+    {
+      "place": 0,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.02236278088766854,
+      "persistence_mse": 0.02503887005150318,
+      "skill_vs_persistence": 0.1068773933620053,
+      "beats_persistence": true,
+      "score_std": 0.02057003043591976,
+      "selected_sources": [
+        17,
+        23
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 1,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.02661431662118574,
+      "persistence_mse": 0.03022204525768757,
+      "skill_vs_persistence": 0.11937407299011737,
+      "beats_persistence": true,
+      "score_std": 0.020863117650151253,
+      "selected_sources": [
+        18,
+        41
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 2,
+      "n_candidate_sources": 9,
+      "expert_mse": 0.029088015116609554,
+      "persistence_mse": 0.033713698387145996,
+      "skill_vs_persistence": 0.13720486009627686,
+      "beats_persistence": true,
+      "score_std": 0.014383627101778984,
+      "selected_sources": [
+        20,
+        30
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 3,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.02472000766453237,
+      "persistence_mse": 0.02809799648821354,
+      "skill_vs_persistence": 0.1202216971269876,
+      "beats_persistence": true,
+      "score_std": 0.014261249452829361,
+      "selected_sources": [
+        26,
+        44
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 4,
+      "n_candidate_sources": 4,
+      "expert_mse": 0.034034661162317355,
+      "persistence_mse": 0.0332770012319088,
+      "skill_vs_persistence": -0.02276827545632476,
+      "beats_persistence": false,
+      "score_std": 0.019910000264644623,
+      "selected_sources": [
+        37
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 5,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.02143470577684395,
+      "persistence_mse": 0.023844288662075996,
+      "skill_vs_persistence": 0.10105492847284869,
+      "beats_persistence": true,
+      "score_std": 0.008464563637971878,
+      "selected_sources": [
+        15,
+        46
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 6,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.02765332172365342,
+      "persistence_mse": 0.03296229615807533,
+      "skill_vs_persistence": 0.16106203308659017,
+      "beats_persistence": true,
+      "score_std": 0.015467059798538685,
+      "selected_sources": [
+        5,
+        34
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 7,
+      "n_candidate_sources": 8,
+      "expert_mse": 0.018792830541822295,
+      "persistence_mse": 0.020027734339237213,
+      "skill_vs_persistence": 0.06165968533922295,
+      "beats_persistence": true,
+      "score_std": 0.007438021712005138,
+      "selected_sources": [
+        26,
+        34
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 8,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.022833355646476917,
+      "persistence_mse": 0.025281265377998352,
+      "skill_vs_persistence": 0.09682702566192714,
+      "beats_persistence": true,
+      "score_std": 0.025847408920526505,
+      "selected_sources": [
+        26
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 9,
+      "n_candidate_sources": 4,
+      "expert_mse": 0.03093197846963253,
+      "persistence_mse": 0.03598586097359657,
+      "skill_vs_persistence": 0.1404407833307687,
+      "beats_persistence": true,
+      "score_std": 0.019008943811058998,
+      "selected_sources": [
+        48
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 10,
+      "n_candidate_sources": 11,
+      "expert_mse": 0.019390728077198143,
+      "persistence_mse": 0.024209341034293175,
+      "skill_vs_persistence": 0.19903941004711112,
+      "beats_persistence": true,
+      "score_std": 0.013213884085416794,
+      "selected_sources": [
+        17,
+        47
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 11,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.024927503453086235,
+      "persistence_mse": 0.025513721629977226,
+      "skill_vs_persistence": 0.022976584341275252,
+      "beats_persistence": true,
+      "score_std": 0.04405323788523674,
+      "selected_sources": [
+        1
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 12,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.03412739738998058,
+      "persistence_mse": 0.038321055471897125,
+      "skill_vs_persistence": 0.10943482715375574,
+      "beats_persistence": true,
+      "score_std": 0.01188295055180788,
+      "selected_sources": [
+        1,
+        41
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 13,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.020230497015793575,
+      "persistence_mse": 0.02264990843832493,
+      "skill_vs_persistence": 0.10681771315408817,
+      "beats_persistence": true,
+      "score_std": 0.01358566153794527,
+      "selected_sources": [
+        22,
+        41
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 14,
+      "n_candidate_sources": 4,
+      "expert_mse": 0.018231562575750995,
+      "persistence_mse": 0.0209128949791193,
+      "skill_vs_persistence": 0.1282143101682245,
+      "beats_persistence": true,
+      "score_std": 0.03030317649245262,
+      "selected_sources": [
+        27
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 15,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.029838279321028362,
+      "persistence_mse": 0.02816065587103367,
+      "skill_vs_persistence": -0.0595733088631758,
+      "beats_persistence": false,
+      "score_std": 0.03320493549108505,
+      "selected_sources": [
+        26,
+        34
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 16,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.03306865126707119,
+      "persistence_mse": 0.03560153394937515,
+      "skill_vs_persistence": 0.0711453244094955,
+      "beats_persistence": true,
+      "score_std": 0.024277634918689728,
+      "selected_sources": [
+        40
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 17,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.03175238483082749,
+      "persistence_mse": 0.031932324171066284,
+      "skill_vs_persistence": 0.005635021718896183,
+      "beats_persistence": true,
+      "score_std": 0.023874931037425995,
+      "selected_sources": [
+        0,
+        20
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 18,
+      "n_candidate_sources": 8,
+      "expert_mse": 0.03167575620951299,
+      "persistence_mse": 0.03508991748094559,
+      "skill_vs_persistence": 0.09729750072186816,
+      "beats_persistence": true,
+      "score_std": 0.01180720329284668,
+      "selected_sources": [
+        1,
+        12
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 19,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.023325718607064005,
+      "persistence_mse": 0.025826863944530487,
+      "skill_vs_persistence": 0.09684278133180646,
+      "beats_persistence": true,
+      "score_std": 0.020113006234169006,
+      "selected_sources": [
+        29
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 20,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.026291863203858228,
+      "persistence_mse": 0.028357399627566338,
+      "skill_vs_persistence": 0.07283941584334108,
+      "beats_persistence": true,
+      "score_std": 0.02539724111557007,
+      "selected_sources": [
+        18,
+        33
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 21,
+      "n_candidate_sources": 4,
+      "expert_mse": 0.025030266823454207,
+      "persistence_mse": 0.02695447951555252,
+      "skill_vs_persistence": 0.07138749204888406,
+      "beats_persistence": true,
+      "score_std": 0.023896411061286926,
+      "selected_sources": [
+        43
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 22,
+      "n_candidate_sources": 8,
+      "expert_mse": 0.023530918992010045,
+      "persistence_mse": 0.025721115991473198,
+      "skill_vs_persistence": 0.08515170959880691,
+      "beats_persistence": true,
+      "score_std": 0.02128737047314644,
+      "selected_sources": [
+        38,
+        44
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 23,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.03518272994049671,
+      "persistence_mse": 0.042912110686302185,
+      "skill_vs_persistence": 0.18012119707439,
+      "beats_persistence": true,
+      "score_std": 0.008783646859228611,
+      "selected_sources": [
+        0,
+        10
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 24,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.03318896726680373,
+      "persistence_mse": 0.039377328008413315,
+      "skill_vs_persistence": 0.15715542558619988,
+      "beats_persistence": true,
+      "score_std": 0.013760242611169815,
+      "selected_sources": [
+        13
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 25,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.028731711720707126,
+      "persistence_mse": 0.03167729079723358,
+      "skill_vs_persistence": 0.09298708956460688,
+      "beats_persistence": true,
+      "score_std": 0.012462181970477104,
+      "selected_sources": [
+        19,
+        45
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 26,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.023812679558659927,
+      "persistence_mse": 0.02493356354534626,
+      "skill_vs_persistence": 0.04495482503525017,
+      "beats_persistence": true,
+      "score_std": 0.019401956349611282,
+      "selected_sources": [
+        15,
+        44
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 27,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.021218297938165872,
+      "persistence_mse": 0.02360611781477928,
+      "skill_vs_persistence": 0.10115258660271731,
+      "beats_persistence": true,
+      "score_std": 0.02029884047806263,
+      "selected_sources": [
+        11,
+        14
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 28,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.038554144099486806,
+      "persistence_mse": 0.04762481153011322,
+      "skill_vs_persistence": 0.19046096224215026,
+      "beats_persistence": true,
+      "score_std": 0.025213714689016342,
+      "selected_sources": [
+        12
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 29,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.03142237481702384,
+      "persistence_mse": 0.030881864950060844,
+      "skill_vs_persistence": -0.017502500831379608,
+      "beats_persistence": false,
+      "score_std": 0.027666699141263962,
+      "selected_sources": [
+        6,
+        19
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 30,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.0326279867975455,
+      "persistence_mse": 0.03816249221563339,
+      "skill_vs_persistence": 0.14502473755685863,
+      "beats_persistence": true,
+      "score_std": 0.0183693990111351,
+      "selected_sources": [
+        48
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 31,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.020613512849206463,
+      "persistence_mse": 0.021481240168213844,
+      "skill_vs_persistence": 0.04039465655671837,
+      "beats_persistence": true,
+      "score_std": 0.013936741277575493,
+      "selected_sources": [
+        3,
+        22
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 32,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.01813684730681962,
+      "persistence_mse": 0.019129738211631775,
+      "skill_vs_persistence": 0.051903005353645226,
+      "beats_persistence": true,
+      "score_std": 0.015387226827442646,
+      "selected_sources": [
+        39
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 33,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.023743145863785165,
+      "persistence_mse": 0.026586513966321945,
+      "skill_vs_persistence": 0.10694775953472402,
+      "beats_persistence": true,
+      "score_std": 0.019300466403365135,
+      "selected_sources": [
+        17
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 34,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.03841734379558082,
+      "persistence_mse": 0.04603861644864082,
+      "skill_vs_persistence": 0.16554087070713874,
+      "beats_persistence": true,
+      "score_std": 0.016108648851513863,
+      "selected_sources": [
+        6,
+        43
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 35,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.028808044410989785,
+      "persistence_mse": 0.028014255687594414,
+      "skill_vs_persistence": -0.028335170930380515,
+      "beats_persistence": false,
+      "score_std": 0.017418434843420982,
+      "selected_sources": [
+        7
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 36,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.0350620425521393,
+      "persistence_mse": 0.0367831289768219,
+      "skill_vs_persistence": 0.04679010384807403,
+      "beats_persistence": true,
+      "score_std": 0.028866378590464592,
+      "selected_sources": [
+        1,
+        30
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 37,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.03258369544719295,
+      "persistence_mse": 0.036442261189222336,
+      "skill_vs_persistence": 0.10588162249302302,
+      "beats_persistence": true,
+      "score_std": 0.016443908214569092,
+      "selected_sources": [
+        35,
+        38
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 38,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.019378327675324433,
+      "persistence_mse": 0.02321775071322918,
+      "skill_vs_persistence": 0.16536584811021737,
+      "beats_persistence": true,
+      "score_std": 0.029461320489645004,
+      "selected_sources": [
+        8,
+        44
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 39,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.02300898871777783,
+      "persistence_mse": 0.026091700419783592,
+      "skill_vs_persistence": 0.1181491298922146,
+      "beats_persistence": true,
+      "score_std": 0.02203947864472866,
+      "selected_sources": [
+        40,
+        47
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 40,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.05011352338094268,
+      "persistence_mse": 0.05751347914338112,
+      "skill_vs_persistence": 0.12866472125587025,
+      "beats_persistence": true,
+      "score_std": 0.0160919688642025,
+      "selected_sources": [
+        39,
+        47
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 41,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.02336064013301454,
+      "persistence_mse": 0.02535916492342949,
+      "skill_vs_persistence": 0.07880877767266303,
+      "beats_persistence": true,
+      "score_std": 0.02232847549021244,
+      "selected_sources": [
+        1,
+        22
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 42,
+      "n_candidate_sources": 7,
+      "expert_mse": 0.024480036463337802,
+      "persistence_mse": 0.029360724613070488,
+      "skill_vs_persistence": 0.16623186975296766,
+      "beats_persistence": true,
+      "score_std": 0.014688337221741676,
+      "selected_sources": [
+        18,
+        20
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 43,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.033044904650311284,
+      "persistence_mse": 0.03684478625655174,
+      "skill_vs_persistence": 0.10313213869071536,
+      "beats_persistence": true,
+      "score_std": 0.022991875186562538,
+      "selected_sources": [
+        34
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 44,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.025942766971040847,
+      "persistence_mse": 0.029528457671403885,
+      "skill_vs_persistence": 0.12143169617136873,
+      "beats_persistence": true,
+      "score_std": 0.028457654640078545,
+      "selected_sources": [
+        8,
+        38
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 45,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.0295320093299806,
+      "persistence_mse": 0.034700799733400345,
+      "skill_vs_persistence": 0.14895306284381282,
+      "beats_persistence": true,
+      "score_std": 0.023105992004275322,
+      "selected_sources": [
+        25,
+        47
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 46,
+      "n_candidate_sources": 5,
+      "expert_mse": 0.027926652124172592,
+      "persistence_mse": 0.0312394667416811,
+      "skill_vs_persistence": 0.10604581201408281,
+      "beats_persistence": true,
+      "score_std": 0.03078271448612213,
+      "selected_sources": [
+        34
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 47,
+      "n_candidate_sources": 6,
+      "expert_mse": 0.04396511940316397,
+      "persistence_mse": 0.04795713722705841,
+      "skill_vs_persistence": 0.08324137041362134,
+      "beats_persistence": true,
+      "score_std": 0.030647197738289833,
+      "selected_sources": [
+        29,
+        45
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 48,
+      "n_candidate_sources": 4,
+      "expert_mse": 0.03639627085636953,
+      "persistence_mse": 0.04109768569469452,
+      "skill_vs_persistence": 0.11439609697856812,
+      "beats_persistence": true,
+      "score_std": 0.027712149545550346,
+      "selected_sources": [
+        30
+      ],
+      "self_loop_selected": true
+    },
+    {
+      "place": 49,
+      "n_candidate_sources": 4,
+      "expert_mse": 0.02121029506087137,
+      "persistence_mse": 0.0226517952978611,
+      "skill_vs_persistence": 0.06363735050730579,
+      "beats_persistence": true,
+      "score_std": 0.026282384991645813,
+      "selected_sources": [
+        10
+      ],
+      "self_loop_selected": true
+    }
+  ]
+}
