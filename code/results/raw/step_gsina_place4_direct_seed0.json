@@ -1,0 +1,29 @@
+{
+  "variant": "direct",
+  "gsina_iters": 20,
+  "gsina_temperature": 1.0,
+  "n_candidate_sources": 4,
+  "r": 0.5,
+  "expert_mse": 0.034034661162317355,
+  "persistence_mse": 0.0332770012319088,
+  "score_std": 0.019910000264644623,
+  "selected_sources": [
+    37
+  ],
+  "self_loop_selected": true,
+  "corr_ceiling_top3": [
+    [
+      13,
+      0.3837347410853826
+    ],
+    [
+      37,
+      0.2543448607918381
+    ],
+    [
+      24,
+      0.17118437862086974
+    ]
+  ],
+  "elapsed_s": 72.3358747959137
+}

@@ -1,0 +1,30 @@
+{
+  "variant": "direct",
+  "cia_weight": 0.1,
+  "cia_bandwidth": 0.3,
+  "n_candidate_sources": 8,
+  "r": 0.375,
+  "expert_mse": 0.022703485271378946,
+  "persistence_mse": 0.0261146929115057,
+  "score_std": 0.0017401748336851597,
+  "selected_sources": [
+    37,
+    41
+  ],
+  "self_loop_selected": true,
+  "corr_ceiling_top3": [
+    [
+      38,
+      0.5445308985489925
+    ],
+    [
+      41,
+      0.3793134249374129
+    ],
+    [
+      13,
+      0.34343602488593966
+    ]
+  ],
+  "elapsed_s": 139.96082854270935
+}
