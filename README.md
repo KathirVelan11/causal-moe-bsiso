@@ -1,18 +1,13 @@
-# Causal-MoE for BSISO Forecasting — Project Summary
-
-> **What this file is.** A clean, standalone explanation of the whole
-> project so far: the idea, the architecture, the code, every experiment
-> run, and what the results actually mean. Written so someone opening this
-> project for the first time — teammate, supervisor, future you — doesn't
-> need to dig through anything else to understand it.
+# Causal-MoE for BSISO Forecasting
 
 ---
 
 ## 1. The idea, in plain terms
 
-We forecast tropical weather (specifically, a signal called OLR — see §2)
-a few days ahead, at 50 regions across the Indo-Pacific monsoon domain.
-Two things make this project different from a standard forecasting model:
+We forecast tropical weather (specifically, a signal called OLR — see the
+data section below) a few days ahead, at 50 regions across the Indo-Pacific
+monsoon domain. Two things make this project different from a standard
+forecasting model:
 
 1. **The model explains itself.** Before forecasting a region's future
    weather, a sub-model looks at all the other regions that *could*
@@ -31,16 +26,19 @@ Two things make this project different from a standard forecasting model:
 
 The name **Causal-MoE** is these two ideas combined: causal discovery
 driving when and how the expert pool changes, instead of a fixed retraining
-schedule.
+schedule. **This drive mechanism — causal structure change deciding when
+an expert retrains, spawns, or hibernates — is the project's own
+contribution.** DIR-GNN and DyMoE are both borrowed methods (see the
+"what's borrowed vs. what's ours" diagram below); the wiring between them
+is not.
 
 **Honest one-line summary of where the project landed:** the *forecasting*
 half works well (beats a naive baseline at 94% of places); the *causal
 discovery* half — the part meant to make the system interpretable — does
 not yet reliably find the true drivers on real data, and we have strong,
-multi-method evidence for exactly why (§7). One of two attempted fixes
-(GSINA) measurably repairs the symptom but doesn't yet improve forecast
-accuracy; this is reported as a real, nuanced finding, not a failure to
-hide.
+multi-method evidence for exactly why. One of two attempted fixes (GSINA)
+measurably repairs the symptom but doesn't yet improve forecast accuracy;
+this is reported as a real, nuanced finding, not a failure to hide.
 
 ---
 
@@ -89,7 +87,54 @@ anomaly series, not raw physical units.
 
 ## 3. Architecture
 
-### 3.1 From 3,600 grid cells to 50 regions
+### 3.1 What's borrowed vs. what's ours
+
+Two published methods are combined here — neither one alone is our
+contribution. What *is* ours is the causal-drift lifecycle wiring
+connecting them, shown as the middle band below:
+
+```
+ ┌─────────────────────────────┐        ┌──────────────────────────────┐
+ │  BORROWED — DIR-GNN          │        │  BORROWED — DyMoE             │
+ │  (Wu et al., ICLR 2022)      │        │  (Kong et al., 2025)           │
+ │                               │        │                                │
+ │  Splits a graph into a       │        │  Spawns a new expert per       │
+ │  causal part and a           │        │  incoming data batch; sparse   │
+ │  non-causal part; trains     │        │  top-k routing across the      │
+ │  for invariance to swapping  │        │  growing expert pool.          │
+ │  the non-causal part.        │        │  (Original: fixed schedule,    │
+ │                               │        │   no localized trigger, no     │
+ │                               │        │   hibernate.)                  │
+ └───────────────┬───────────────┘        └────────────────┬───────────────┘
+                 │  causal edge scores                       │  expert pool
+                 │  (which edges are "real")                 │  mechanics
+                 v                                            v
+     ┌───────────────────────────────────────────────────────────────────┐
+     │             OURS — the causal-drift lifecycle (novel)              │
+     │                                                                     │
+     │  • Turns DIR-GNN's per-edge causal scores into a per-place         │
+     │    "causal signature" vector, tracked over time.                   │
+     │  • Feeds that signature into a dedicated change-point channel      │
+     │    (STARS/Rodionov) running ALONGSIDE a standard error-based       │
+     │    channel (ADWIN) — DyMoE has no drift signal of its own at all,  │
+     │    let alone one built from causal structure.                      │
+     │  • Fuses both channels (OR / AND) into a 3-tier response:          │
+     │    freeze / retrain-in-place / spawn-new-generation — DyMoE only   │
+     │    ever spawns, on a fixed data-arrival schedule, never retrains   │
+     │    in place and never freezes.                                     │
+     │  • Adds hibernate + similarity-matched reactivate, so a retired    │
+     │    expert can be warm-started again if its old regime recurs —     │
+     │    plain DyMoE deletes on spawn and never revisits an old expert.  │
+     └───────────────────────────────────────────────────────────────────┘
+```
+
+**In one sentence:** DIR-GNN tells you *which structure is causal right
+now*; DyMoE gives you a *growing pool of experts*; the piece built here is
+what watches the causal structure *change* and uses that, specifically,
+to decide when an expert freezes, retrains, spawns fresh, or comes back
+out of storage — a decision neither source method makes on its own.
+
+### 3.2 From 3,600 grid cells to 50 regions
 
 The raw data is 3,600 grid cells (25×144). Running an independent model
 per grid cell was tested and measured to be computationally infeasible on
@@ -100,7 +145,22 @@ on OLR correlation structure (climatologically similar cells group
 together automatically, not hand-drawn boxes). Each region's feature value
 is the mean of its member cells (72 cells on average).
 
-### 3.2 The mesh (graph structure)
+```
+   3,600 raw grid cells (25 lat x 144 lon)
+                 |
+      [k-means on OLR correlation]
+                 |
+                 v
+   50 regions ("places"), each = mean of ~72 member cells
+                 |
+   [lattice adjacency, longitude wraparound]
+                 |
+                 v
+      50-node graph mesh  <-- this is the "place" the rest
+                                of the system operates on
+```
+
+### 3.3 The mesh (graph structure)
 
 - **Nodes** = the 50 regions.
 - **Edges** = physical adjacency between regions (a lattice graph, with
@@ -111,7 +171,17 @@ is the mean of its member cells (72 cells on average).
   link like "region Y's future depends on region X's state 5 days ago"
   is structurally invisible to a model that only ever sees "today."
 
-### 3.3 The causal splitter (DIR-GNN-based)
+```
+one region's node vector, per day
+┌───────────────────────────────────────────────────────────┐
+│  6 fields (sst, h850, u200, pw, u850, olr)                  │
+│    x 3 lags (today, -5d, -10d)                               │
+│    + is_ocean flag                                            │
+│  = 21 values, one node, one day                               │
+└───────────────────────────────────────────────────────────┘
+```
+
+### 3.4 The causal splitter (DIR-GNN-based)
 
 For one target region, the splitter looks at a candidate set of other
 regions (its graph neighbours) and scores every candidate edge for how
@@ -161,7 +231,7 @@ Loss = average error across swaps
        + λ · variance across swaps
 ```
 
-### 3.4 The expert (forecaster)
+### 3.5 The expert (forecaster)
 
 A separate small model, `PlaceExpert`, takes the region's own causal edge
 set `c̃` from the splitter and forecasts its OLR N days ahead — deliberately
@@ -169,7 +239,22 @@ a different model from the splitter's own internal classifier, so the
 forecasting model and the causal-discovery model can be developed,
 frozen, retrained, or replaced independently.
 
-### 3.5 Dynamic Mixture-of-Experts: drift detection + hibernate/reactivate
+```
+causal edge set c̃ (from splitter)
+        |
+        v
+┌────────────────────────────┐
+│  PlaceExpert                 │
+│  weighted-mean aggregation    │
+│  over c̃'s source regions      │
+│  -> small MLP -> forecast     │
+└────────────────────────────┘
+        |
+        v
+  OLR forecast, N days ahead, for THIS region only
+```
+
+### 3.6 Dynamic Mixture-of-Experts: drift detection + hibernate/reactivate
 
 Each of the 50 regions runs its own independent chain of experts over
 time, like a version history:
@@ -182,7 +267,36 @@ Region A:  Expert A-1 --[drift]--> Expert A-2 --[drift]--> Expert A-3 (ACTIVE)
              Archive A  <---- searched on every future drift event
 ```
 
-**Detecting drift — two independent channels:**
+**Detecting drift — two independent channels, both feeding one novel
+fusion + lifecycle decision (this fusion/lifecycle layer is the project's
+own addition — see 3.1 above):**
+
+```
+┌──────────────────────────┐      ┌──────────────────────────────┐
+│ Channel 1 — error-based    │      │ Channel 2 — causal-structure   │
+│ (borrowed: ADWIN)           │      │ based (borrowed test, novel     │
+│                              │      │ use: STARS/Rodionov applied     │
+│ watches the expert's        │      │ to the splitter's own edge      │
+│ rolling forecast error      │      │ scores, turned into a per-      │
+│                              │      │ region "causal signature")      │
+└──────────────┬───────────────┘      └───────────────┬──────────────┘
+               │                                        │
+               └───────────────┬────────────────────────┘
+                                v
+                    ┌───────────────────────┐
+                    │  Fusion gate (OURS)     │
+                    │  OR  --  fast, noisier   │
+                    │  AND --  slow, cleaner    │
+                    └───────────┬───────────┘
+                                v
+              ┌─────────────────────────────────┐
+              │  3-tier response (OURS)            │
+              │  Tier 0: freeze                     │
+              │  Tier 1: retrain expert in place     │
+              │  Tier 2: hibernate + spawn/reactivate │
+              └─────────────────────────────────┘
+```
+
 - **Channel 1 (error-based):** watches the expert's rolling forecast
   error using ADWIN, a standard streaming change-detection algorithm.
   Catches drift once it shows up as worse forecasts.
@@ -193,7 +307,8 @@ Region A:  Expert A-1 --[drift]--> Expert A-2 --[drift]--> Expert A-3 (ACTIVE)
   necessarily shows up as forecast error.
 - **Fusion:** the two channels are combined two ways — OR (either channel
   triggers) and AND (both must agree) — and both are reported, since which
-  is "better" is a real trade-off (§6) rather than an obvious choice.
+  is "better" is a real trade-off (see the results table below) rather
+  than an obvious choice.
 
 **Hibernate & reactivate:** climate has recurring regimes (seasons,
 El Niño/La Niña). Instead of deleting an old expert when a new one spawns
@@ -203,7 +318,29 @@ event fires, the system searches the *whole* archive for a similar past
 regime; a good match is reactivated as a warm start (continues training
 from those old weights); no good match means a fresh expert spawns.
 
-### 3.6 How the pieces fit together end to end
+```
+   drift event fires for Region A
+              |
+              v
+   compute Region A's current causal signature
+              |
+              v
+   compare (cosine similarity) against EVERY archived
+   signature in the whole system, not just A's own history
+              |
+       +------+------+
+       |             |
+  best match      no good match
+  >= threshold     found
+       |             |
+       v             v
+  reactivate as   spawn a brand-new
+  a WARM START    expert from scratch
+  (old weights,
+   keeps training)
+```
+
+### 3.7 How the pieces fit together end to end
 
 ```
 raw grid (3,600 cells)
@@ -215,14 +352,16 @@ raw grid (3,600 cells)
         v
   +-----------------------------------------+
   |  per region, per time block:             |
-  |    Splitter (3.3) -> causal edge set c̃   |
-  |    Expert (3.4) trained on c̃             |
-  |    -> OLR forecast, N days ahead         |
+  |    Splitter (DIR-GNN) -> causal edge c̃    |
+  |    Expert trained on c̃                     |
+  |    -> OLR forecast, N days ahead           |
   +-----------------------------------------+
         |
-   [drift detection, 3.5] --watches--> error + causal-structure signals
+   [drift detection, novel fusion layer] --watches--> error + causal-structure signals
         |
-   drift fires? -> retrain in place, or hibernate + spawn/reactivate (3.5)
+   drift fires? -> retrain in place, or hibernate + spawn/reactivate
+        |
+   scale to all 50 regions, one independent lineage per region
 ```
 
 ---
@@ -244,22 +383,22 @@ code/
 │   │   ├── causaldynamics.py    loads validation data w/ known causal graphs
 │   │   └── semisynthetic.py     real features + a hand-injected causal rule
 │   ├── splitter/
-│   │   ├── dirgnn.py            the causal splitter itself (§3.3)
-│   │   ├── cia.py               attempted fix #1 (§7.3)
-│   │   └── gsina.py             attempted fix #2 (§7.3)
-│   ├── experts/expert.py        the forecaster (§3.4)
+│   │   ├── dirgnn.py            the causal splitter itself (borrowed: DIR-GNN)
+│   │   ├── cia.py               attempted fix #1
+│   │   └── gsina.py             attempted fix #2
+│   ├── experts/expert.py        the forecaster
 │   ├── drift/
 │   │   ├── rodionov.py          STARS/Rodionov change-point test
-│   │   ├── channels.py          both drift channels + fusion gate
-│   │   └── archive.py           hibernate/reactivate store (§3.5)
+│   │   ├── channels.py          both drift channels + fusion gate (novel wiring)
+│   │   └── archive.py           hibernate/reactivate store (novel)
 │   └── baselines/simple.py      persistence / plain-GNN / random-subset ablations
-├── scripts/                      one runnable script per experiment (§5-§7)
-├── tests/                        124 tests, all passing (§5)
+├── scripts/                      one runnable script per experiment
+├── tests/                        124 tests, all passing
 ├── cache/                        preprocessed mesh cache (windowed_clustered50_lead1.npz)
 ├── data_external/causaldynamics/ downloaded validation dataset
 └── results/
     ├── raw/                      every experiment's result as JSON
-    └── slide_figures/            generated PNG charts of the results (§8)
+    └── slide_figures/            generated PNG charts of the results
 ```
 
 **Reference implementations used** (real published code, not reimplemented
@@ -278,7 +417,7 @@ every module above — including tests written specifically after real bugs
 were caught during development, e.g.:
 - an early version of the splitter accidentally fed the *same* swapped
   data to both the causal and non-causal edges, which silently defeated
-  the entire invariance mechanism (§3.3) — caught, fixed, and locked in
+  the entire invariance mechanism — caught, fixed, and locked in
   with a dedicated regression test;
 - an early version of the archive-matching similarity score saturated at
   a meaningless 1.000 for every comparison, because raw scores shared a
@@ -296,15 +435,15 @@ added.
 | step | what | outcome |
 |---|---|---|
 | 1 | Mesh loader — raw data → 50-region graph + lagged features | done; cache built, 25/25 tests |
-| 2 | Splitter trained on datasets with a **known** true causal graph (CausalDynamics), to check the mechanism actually works before trusting it on real data with no answer key | mixed at first, then fixed (§7.1) |
-| 3 | Mid-scale check: real BSISO features + a hand-written, deliberately-known causal rule injected as the target | real signal at small scale, degrading sharply at larger candidate sets (§7.1) |
-| 4 | First real, full production run: splitter + expert together, on real BSISO OLR, no known answer key anymore | forecasting works; causal selection does not discriminate well (§7.2) |
-| 5 | Add drift detection (single region) | both channels work; a real OR-vs-AND speed/false-alarm trade-off measured (§6.1 below) |
+| 2 | Splitter trained on datasets with a **known** true causal graph (CausalDynamics), to check the mechanism actually works before trusting it on real data with no answer key | mixed at first, then fixed (see results below) |
+| 3 | Mid-scale check: real BSISO features + a hand-written, deliberately-known causal rule injected as the target | real signal at small scale, degrading sharply at larger candidate sets |
+| 4 | First real, full production run: splitter + expert together, on real BSISO OLR, no known answer key anymore | forecasting works; causal selection does not discriminate well |
+| 5 | Add drift detection (single region) | both channels work; a real OR-vs-AND speed/false-alarm trade-off measured |
 | 6 | Add hibernate/reactivate (single region) | works; ~60% of new drift events found a matching past regime instead of starting fresh |
 | 7 | Scale everything to all 50 regions | forecasting generalizes (94% beat baseline); causal-ranking weakness confirmed mesh-wide, not a one-region fluke |
-| 8 | Baselines + evaluation | the project's key negative result: the causal splitter ≈ a random edge subset (§7.2) |
-| — | Attempted fix #1: CIA (representation alignment) | does not help; makes things worse (§7.3) |
-| — | Attempted fix #2: GSINA (differentiable edge selection) | fixes the diagnosed symptom, but no forecast-accuracy gain at full scale (§7.3) |
+| 8 | Baselines + evaluation | the project's key negative result: the causal splitter ≈ a random edge subset |
+| — | Attempted fix #1: CIA (representation alignment) | does not help; makes things worse |
+| — | Attempted fix #2: GSINA (differentiable edge selection) | fixes the diagnosed symptom, but no forecast-accuracy gain at full scale |
 
 ### 6.1 Drift detection result (step 5), concretely
 
@@ -404,10 +543,9 @@ does not help.** Tested at 4 weight/bandwidth settings and 2 data budgets
 — every single configuration made forecast error *worse*, in one case bad
 enough that the model stopped beating the naive baseline at all
 (0.03040 vs. 0.02572). Score spread also shrank further rather than
-widening, the opposite of CIA's intended effect. Plausible reasons are
-documented (§10, CIA entry, in the working log) but not fully resolved —
-most likely that the regression adaptation of a method designed for
-classification is too weak a constraint at this batch size.
+widening, the opposite of CIA's intended effect. Most likely explanation:
+the regression adaptation of a method designed for classification is too
+weak a constraint at this batch size.
 
 **GSINA (differentiable edge selection)** — replaces the hard,
 gradient-blocked "keep the top-r%" cutoff with a smooth, fully
@@ -417,8 +555,7 @@ edges already hard-picked). **Result: a genuine, reproducible fix to the
 diagnosed symptom, but not to forecast accuracy.**
 
 - Score spread widened **5x, at every single one of the 50 regions**, no
-  exceptions — the near-uniform-score problem (§7.1-7.2) is measurably
-  gone.
+  exceptions — the near-uniform-score problem above is measurably gone.
 - It selects self-persistence at every region and, on several test
   regions, correctly finds the single strongest real driver by independent
   measures (raw correlation and PCMCI) — something the original mechanism
@@ -451,10 +588,10 @@ or down to "failed."
   `step7_all_places_gsina_direct.json`.
 - **Generated charts of the above** (used for presenting this work):
   `code/results/slide_figures/*.png` — e.g. `06_1_density_cliff.png`
-  (the recovery-collapse finding, §7.1), `08_1_ablation.png` and
-  `08_5_fix_comparison.png` (the step 8 / CIA / GSINA comparison, §7.2-7.3),
-  `07_2_all_places_skill.png` (the 50-region forecast skill spread, §7.2),
-  `09_1_lifecycle_timeline.png` (hibernate/reactivate in action, §3.5/§6).
+  (the recovery-collapse finding), `08_1_ablation.png` and
+  `08_5_fix_comparison.png` (the step 8 / CIA / GSINA comparison),
+  `07_2_all_places_skill.png` (the 50-region forecast skill spread),
+  `09_1_lifecycle_timeline.png` (hibernate/reactivate in action).
 - **The preprocessed data cache:** `code/cache/windowed_clustered50_lead1.npz`.
 
 ---
@@ -469,18 +606,18 @@ speed-vs-reliability trade-off in drift detection.
 
 **What's not yet solved:** the causal-discovery half doesn't yet produce
 a ranking trustworthy enough to claim "these are, in order, the true
-drivers." We know precisely why (§7.1-7.2, a named, literature-documented
-limitation of this training objective on graphs), we've ruled out
-"implementation bug" and "needs more training" as explanations, and one of
-two literature-sourced fixes (GSINA) demonstrably repairs the diagnosed
+drivers." We know precisely why (a named, literature-documented limitation
+of this training objective on graphs), we've ruled out "implementation
+bug" and "needs more training" as explanations, and one of two
+literature-sourced fixes (GSINA) demonstrably repairs the diagnosed
 symptom — it just hasn't yet translated into better forecasts.
 
 **Documented next steps, not yet built** (candidates for a future
 session, in the order most likely to pay off):
 1. Run GSINA as the standing mechanism through the full drift-detection
-   and hibernate/reactivate pipeline (steps 5-6), not just the static
-   forecast comparison — its much wider score spread may behave
-   differently as a *change-point signal* even without changing raw MSE.
+   and hibernate/reactivate pipeline, not just the static forecast
+   comparison — its much wider score spread may behave differently as a
+   *change-point signal* even without changing raw MSE.
 2. Sweep GSINA across more of the 50 regions with multiple seeds, to
    firm up the "5x wider score spread, everywhere" finding into a
    statistically reported result rather than a strong pattern.
