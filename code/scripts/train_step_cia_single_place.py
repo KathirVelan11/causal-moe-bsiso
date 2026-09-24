@@ -86,6 +86,7 @@ def train_place_with_cia(
     args,
     sample_dates: np.ndarray | None = None,
     olr_lag0_channel: int = 5,
+    lead_time_days: int = 1,
 ) -> dict:
     """Same structure as train_step4_single_place.train_place, with one
     addition: a CIA alignment term computed once per mini-batch (see module
@@ -108,8 +109,11 @@ def train_place_with_cia(
     # train_step4_single_place.train_place.
     if sample_dates is not None and getattr(args, "test_start", None) is not None:
         from datetime import date as _date
+        # B22 audit fix: pass the real lead time so no split boundary leaks
+        # a training target into the held-out window (see splits.py).
         split_masks = chronological_split(
-            sample_dates, _date.fromisoformat(args.val_start), _date.fromisoformat(args.test_start)
+            sample_dates, _date.fromisoformat(args.val_start), _date.fromisoformat(args.test_start),
+            lead_time_days=lead_time_days,
         )
         train_pool_idx = np.nonzero(split_masks.train_mask | split_masks.val_mask)[0]
         test_idx_full = np.nonzero(split_masks.test_mask)[0]
@@ -330,6 +334,7 @@ def main() -> None:
         args.variant, args.target, cache["features"], cache["targets"],
         cache["sample_time_index"], cache["edge_index"], cache["n_clusters"], args,
         sample_dates=sample_dates, olr_lag0_channel=cache["olr_lag0_channel"],
+        lead_time_days=int(cache["lead_time_days"]),
     )
 
     RESULTS_DIR.mkdir(exist_ok=True)

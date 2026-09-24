@@ -93,6 +93,7 @@ def main() -> None:
             args=args,
             sample_dates=sample_dates,
             olr_lag0_channel=cache["olr_lag0_channel"],
+            lead_time_days=int(cache["lead_time_days"]),
         )
         beats = res["expert_mse"] < res["persistence_mse"]
         skill = 1.0 - (res["expert_mse"] / res["persistence_mse"]) if res["persistence_mse"] > 0 else 0.0

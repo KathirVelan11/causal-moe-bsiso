@@ -134,7 +134,12 @@ def main() -> None:
     # evaluated on x_all[:n], the training rows themselves.
     from datetime import date as _date
     sample_dates = cache["sample_dates"].astype("datetime64[D]")
-    split_masks = chronological_split(sample_dates, _date.fromisoformat(args.val_start), _date.fromisoformat(args.test_start))
+    # B22 audit fix: pass the real lead time so no training/val sample's
+    # target leaks into the next split's window (see splits.py).
+    split_masks = chronological_split(
+        sample_dates, _date.fromisoformat(args.val_start), _date.fromisoformat(args.test_start),
+        lead_time_days=int(cache["lead_time_days"]),
+    )
     train_pool_idx = np.nonzero(split_masks.train_mask | split_masks.val_mask)[0]
     test_idx = np.nonzero(split_masks.test_mask)[0]
     if args.n_samples_cap > 0 and args.n_samples_cap < train_pool_idx.shape[0]:
@@ -166,6 +171,7 @@ def main() -> None:
         sample_time_index=cache["sample_time_index"],
         real_edge_index=cache["edge_index"], n_clusters=n_clusters, args=args,
         sample_dates=sample_dates, olr_lag0_channel=olr_lag0_channel,
+        lags_days=cache["lags_days"], lead_time_days=int(cache["lead_time_days"]),
     )
     results["full_causal_splitter"] = full["expert_mse"]
     print(f"full model MSE (out-of-sample) = {full['expert_mse']:.5f} ({time.time()-t0:.0f}s)")

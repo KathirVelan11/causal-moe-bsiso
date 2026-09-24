@@ -88,9 +88,14 @@ def main() -> None:
     r = args.r if args.r is not None else min(0.5, 3.0 / n_edges)
 
     # B4 audit fix: honest out-of-sample split, same convention as step 8.
+    # B22 audit fix: pass the real lead time so no split boundary leaks a
+    # training target into the held-out window (see splits.py).
     from datetime import date as _date
     sample_dates = cache["sample_dates"].astype("datetime64[D]")
-    split_masks = chronological_split(sample_dates, _date.fromisoformat(args.val_start), _date.fromisoformat(args.test_start))
+    split_masks = chronological_split(
+        sample_dates, _date.fromisoformat(args.val_start), _date.fromisoformat(args.test_start),
+        lead_time_days=int(cache["lead_time_days"]),
+    )
     train_pool_idx = np.nonzero(split_masks.train_mask | split_masks.val_mask)[0]
     test_idx = np.nonzero(split_masks.test_mask)[0]
     if args.n_samples_cap > 0 and args.n_samples_cap < train_pool_idx.shape[0]:

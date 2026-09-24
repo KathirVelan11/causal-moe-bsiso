@@ -69,6 +69,7 @@ def chronological_split(
     sample_dates: np.ndarray,
     val_start: date,
     test_start: date,
+    lead_time_days: int = 0,
 ) -> DateRangeSplit:
     """Plain chronological split for ordinary forecast-accuracy evaluation
     (§6): train on everything before val_start, validate on
@@ -76,12 +77,33 @@ def chronological_split(
 
     sample_dates: (n_samples,) datetime64[ns] or datetime64[D], the date
         each sample's "today" (lag 0) corresponds to.
+
+    lead_time_days: **B22 audit fix (2026-09-24).** `sample_dates` is each
+    sample's "today," but a sample's *target* is `lead_time_days` days
+    AFTER today (see `windows.py`). With a plain date cutoff, a training
+    sample whose "today" falls in [val_start - lead_time_days, val_start)
+    has a target that falls INSIDE the validation window -- the model is
+    directly trained to predict a value nominally held out for
+    validation, and the same leak repeats at the val/test boundary. This
+    is a small-sample leak (`lead_time_days` samples per boundary, e.g. 7
+    at lead-7 -- not enough to have driven this project's headline
+    "beats persistence" result, but a real methodological bug, not a
+    style nit) that a chronological split is specifically supposed to
+    prevent. Passing the true `lead_time_days` here shrinks the train
+    mask so its LATEST "today" is `val_start - lead_time_days`, closing
+    the gap. Defaults to 0 (old behaviour, exact date cutoff) so existing
+    callers that don't pass it keep their current split -- but every
+    training/eval script in this repo now passes the real value.
     """
+    if lead_time_days < 0:
+        raise ValueError("lead_time_days must be >= 0")
+
     val_start64 = _to_datetime64(val_start)
     test_start64 = _to_datetime64(test_start)
+    gap = np.timedelta64(lead_time_days, "D")
 
-    train_mask = sample_dates < val_start64
-    val_mask = (sample_dates >= val_start64) & (sample_dates < test_start64)
+    train_mask = sample_dates < (val_start64 - gap)
+    val_mask = (sample_dates >= val_start64) & (sample_dates < (test_start64 - gap))
     test_mask = sample_dates >= test_start64
 
     return DateRangeSplit(train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
