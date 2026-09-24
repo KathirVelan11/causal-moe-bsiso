@@ -24,7 +24,7 @@ caused by three concrete, fixable bugs (a self-bypass shortcut in both
 the encoder and the expert, no honest train/test split, and a diluted
 loss/metric in the semi-synthetic validation ladder), not a fundamental
 limitation of VREx-style invariant learning on graphs. Fixing those bugs
-(plus 20 others found along the way — full list and evidence in
+(plus 22 others found along the way — full list and evidence in
 `../PROJECT_PLAN.md`) changed the result. All numbers below are final —
 every follow-up flagged as "optional" or "untested" in the original
 bug-fix pass has now been run (Phase 9, 2026-09-24): both candidate-set
@@ -32,6 +32,19 @@ variants and the hardest lead mesh-wide, CIA/GSINA re-verified
 post-bugfix, drift/lifecycle re-run at 3 places, and figures generated.
 See `results/phase9_figures/` for the visual versions of the numbers
 below.
+
+**One open scope question, flagged 2026-09-24, not yet resolved (B23):**
+this project trains and evaluates on the full 12-month record, but
+BSISO is by definition a boreal-summer (May-Oct) phenomenon — outside
+that window the dominant tropical intraseasonal mode is the MJO, with
+different dynamics. Every number below is therefore an average over
+two different physical regimes, not a clean BSISO-only result. The
+seasonal difference is real but modest where checked (place 22/lead-7:
+persistence R² vs climatology -0.656 JJASO vs -0.607 other-season).
+Not fixed — this is a scope call for whoever owns the writeup: either
+add a season filter and re-run, or soften the framing to "tropical
+intraseasonal variability" rather than "BSISO" specifically. See B23 in
+`../PROJECT_PLAN.md` for the full analysis.
 
 ### Headline numbers
 
