@@ -197,6 +197,7 @@ def evaluate_detector(
     window_mask: np.ndarray,
     rule: str,
     samples_per_year: float = 365.25,
+    known_event_mask: np.ndarray | None = None,
 ) -> DetectorEvaluation:
     """SS6's "Detector reliability -- latency + false-alarm rate, per channel
     AND for the fused rule (both OR and AND, reported)".
@@ -204,15 +205,27 @@ def evaluate_detector(
     window_mask: (T,) bool, the deliberate-shift window the detector is
         SUPPOSED to fire inside (SS8: the 1997-98 El Nino span, or the
         2013-2022 gradual-drift span).
+    known_event_mask: (T,) bool, optional (B13 audit fix, 2026-09-23). Union
+        of ALL known real climate events (every major El Nino, plus the
+        project's own gradual-drift window) -- alarms inside this mask but
+        outside `window_mask` are NOT counted as false alarms, since they
+        may be genuine detections of a DIFFERENT real event than the one
+        `window_mask` currently tests. Without this, evaluating one window
+        at a time (as run_step5_drift.py does) double-penalizes a detector
+        that correctly fires during e.g. 1982-83 while being scored against
+        the 1997-98 window alone. Defaults to `window_mask` itself
+        (original behaviour: only this one window's events are excluded).
     """
     T = window_mask.shape[0]
+    if known_event_mask is None:
+        known_event_mask = window_mask
     in_window = [i for i in alarm_indices if 0 <= i < T and window_mask[i]]
-    outside = [i for i in alarm_indices if 0 <= i < T and not window_mask[i]]
+    outside = [i for i in alarm_indices if 0 <= i < T and not known_event_mask[i]]
 
     window_start = int(np.argmax(window_mask)) if window_mask.any() else 0
     latency = (min(in_window) - window_start) if in_window else None
 
-    n_outside_years = float((~window_mask).sum()) / samples_per_year
+    n_outside_years = float((~known_event_mask).sum()) / samples_per_year
     far = (len(outside) / n_outside_years) if n_outside_years > 0 else 0.0
 
     return DetectorEvaluation(

@@ -42,10 +42,11 @@ def test_shapes_and_valid_range():
     raw = make_fake_raw(n_time=30)
     ds = build_windowed_dataset(raw, lead_time_days=1)
 
+    # max_lag is now 10 (lag set widened to (0,1,2,3,5,7,10), B8 audit fix)
     # valid t in [10, n_time - 1 - 1] = [10, 28] -> 19 samples
     assert ds.features.shape == (19, 6, N_FEATURES)
     assert ds.targets.shape == (19, 6)
-    assert N_FEATURES == 21
+    assert N_FEATURES == 49
     assert N_CHANNELS_PER_LAG == 7
 
 
@@ -58,24 +59,20 @@ def test_lag_values_correct_for_first_sample():
 
     place = 4  # r=1, c=1 -> node_id = 1*3+1 = 4
     r, c = 1, 1
-    feat = ds.features[0, place]  # (21,) = [lag0: 7ch][lag5: 7ch][lag10: 7ch]
+    # (49,) = [lag0:7ch][lag1:7ch][lag2:7ch][lag3:7ch][lag5:7ch][lag7:7ch][lag10:7ch]
+    feat = ds.features[0, place]
 
     olr_idx = FIELDS.index("olr")
 
     def expected_field(fi, t):
         return fi * 10000 + t * 100 + r * 10 + c
 
-    # lag0 block = today = t=10
-    assert feat[olr_idx] == pytest.approx(expected_field(olr_idx, 10))
-    # lag5 block starts at offset 7, today-5=t5
-    assert feat[7 + olr_idx] == pytest.approx(expected_field(olr_idx, 5))
-    # lag10 block starts at offset 14, today-10=t0
-    assert feat[14 + olr_idx] == pytest.approx(expected_field(olr_idx, 0))
-
-    # is_ocean flag is channel index 6 within each 7-channel block, constant across lags
-    assert feat[6] == 1.0
-    assert feat[7 + 6] == 1.0
-    assert feat[14 + 6] == 1.0
+    # lag blocks: (lag_days, block_offset) for lags_days = (0,1,2,3,5,7,10)
+    lag_blocks = [(0, 0), (1, 7), (2, 14), (3, 21), (5, 28), (7, 35), (10, 42)]
+    for lag, offset in lag_blocks:
+        assert feat[offset + olr_idx] == pytest.approx(expected_field(olr_idx, 10 - lag))
+        # is_ocean flag is channel index 6 within each 7-channel block, constant across lags
+        assert feat[offset + 6] == 1.0
 
 
 def test_land_cell_sst_sentinel_and_flag():

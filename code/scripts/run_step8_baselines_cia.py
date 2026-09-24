@@ -38,11 +38,13 @@ from causal_moe.data.candidate_edges import (
     build_candidate_source_set,
     expand_source_clusters_to_edge_index,
 )
+from causal_moe.data.splits import chronological_split
 from scripts.run_step8_baselines import (
     eval_fixed_edge_baseline,
     train_fixed_edge_baseline,
 )
-from scripts.train_step4_single_place import OLR_LAG0_CHANNEL, load_cache
+from scripts.train_step4_single_place import CACHE_PATH as DEFAULT_CACHE_PATH
+from scripts.train_step4_single_place import load_cache
 from scripts.train_step_cia_single_place import train_place_with_cia
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
@@ -64,13 +66,20 @@ def main() -> None:
                          help="best-of-sweep setting from the CIA before/after run (§10) -- see writeup for why")
     parser.add_argument("--cia-bandwidth", type=float, default=0.3)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--cache-path", type=Path, default=None)
+    parser.add_argument("--val-start", type=str, default="2005-01-01")
+    parser.add_argument("--test-start", type=str, default="2013-01-01")
     args = parser.parse_args()
     args.cap_contiguous = True
+    args.use_self_features = False
+    args.self_bypass = False
 
     RESULTS_DIR.mkdir(exist_ok=True)
-    cache = load_cache()
+    cache = load_cache(args.cache_path or DEFAULT_CACHE_PATH)
     target = args.target
     n_clusters = cache["n_clusters"]
+    n_features = cache["features"].shape[-1]
+    olr_lag0_channel = cache["olr_lag0_channel"]
 
     candidate_set = build_candidate_source_set(cache["edge_index"], target, args.variant, n_clusters=n_clusters)
     sources = candidate_set.source_clusters
@@ -78,17 +87,31 @@ def main() -> None:
     n_edges = edge_index.shape[1]
     r = args.r if args.r is not None else min(0.5, 3.0 / n_edges)
 
-    n = min(args.n_samples_cap, cache["features"].shape[0])
-    x_all = torch.from_numpy(cache["features"][:n])
-    y_all = torch.from_numpy(cache["targets"][:n][:, target])
+    # B4 audit fix: honest out-of-sample split, same convention as step 8.
+    from datetime import date as _date
+    sample_dates = cache["sample_dates"].astype("datetime64[D]")
+    split_masks = chronological_split(sample_dates, _date.fromisoformat(args.val_start), _date.fromisoformat(args.test_start))
+    train_pool_idx = np.nonzero(split_masks.train_mask | split_masks.val_mask)[0]
+    test_idx = np.nonzero(split_masks.test_mask)[0]
+    if args.n_samples_cap > 0 and args.n_samples_cap < train_pool_idx.shape[0]:
+        train_idx = train_pool_idx[: args.n_samples_cap]
+    else:
+        train_idx = train_pool_idx
+    n = train_idx.shape[0]
+
+    x_train = torch.from_numpy(cache["features"][train_idx])
+    y_train = torch.from_numpy(cache["targets"][train_idx][:, target])
+    x_test = torch.from_numpy(cache["features"][test_idx])
+    y_test = torch.from_numpy(cache["targets"][test_idx][:, target])
+    print(f"train pool: {n}/{train_pool_idx.shape[0]}  test (out-of-sample): {test_idx.shape[0]}")
 
     results = {}
 
     # 1. persistence
-    pers = PersistenceBaseline(olr_channel=OLR_LAG0_CHANNEL)
-    pers_pred = pers.predict(cache["features"][:n], target)
-    results["persistence"] = float(np.mean((pers_pred - y_all.numpy()) ** 2))
-    print(f"persistence MSE = {results['persistence']:.5f}")
+    pers = PersistenceBaseline(olr_channel=olr_lag0_channel)
+    pers_pred = pers.predict(cache["features"][test_idx], target)
+    results["persistence"] = float(np.mean((pers_pred - y_test.numpy()) ** 2))
+    print(f"persistence MSE (out-of-sample) = {results['persistence']:.5f}")
 
     # 2. full model WITH CIA (splitter + expert + CIA alignment term)
     print(f"\ntraining FULL model + CIA (weight={args.cia_weight}, bandwidth={args.cia_bandwidth})...")
@@ -98,26 +121,27 @@ def main() -> None:
         features_all=cache["features"], targets_all=cache["targets"],
         sample_time_index=cache["sample_time_index"],
         real_edge_index=cache["edge_index"], n_clusters=n_clusters, args=args,
+        sample_dates=sample_dates, olr_lag0_channel=olr_lag0_channel,
     )
     results["full_causal_splitter_cia"] = full_cia["expert_mse"]
-    print(f"full model + CIA MSE = {full_cia['expert_mse']:.5f} ({time.time()-t0:.0f}s)")
+    print(f"full model + CIA MSE (out-of-sample) = {full_cia['expert_mse']:.5f} ({time.time()-t0:.0f}s)")
 
     # 3. plain-GNN ablation (all edges, uniform weight) -- unchanged from step 8
     print(f"\ntraining PLAIN-GNN ablation (all {n_edges} edges, uniform weight)...")
     t0 = time.time()
-    plain = PlainGNNBaseline(in_channels=21, edge_index=edge_index, hidden_channels=16)
-    train_fixed_edge_baseline(plain, x_all, y_all, target, args.epochs, args.lr, args.batch_size, args.seed)
-    results["plain_gnn_all_edges"] = eval_fixed_edge_baseline(plain, x_all, y_all, target)
-    print(f"plain-GNN MSE = {results['plain_gnn_all_edges']:.5f} ({time.time()-t0:.0f}s)")
+    plain = PlainGNNBaseline(in_channels=n_features, edge_index=edge_index, hidden_channels=16)
+    train_fixed_edge_baseline(plain, x_train, y_train, target, args.epochs, args.lr, args.batch_size, args.seed)
+    results["plain_gnn_all_edges"] = eval_fixed_edge_baseline(plain, x_test, y_test, target)
+    print(f"plain-GNN MSE (out-of-sample) = {results['plain_gnn_all_edges']:.5f} ({time.time()-t0:.0f}s)")
 
     # 4. random-subset ablation -- unchanged from step 8
     k = max(1, int(round(r * n_edges)))
     print(f"\ntraining RANDOM-SUBSET ablation ({k} of {n_edges} edges, fixed)...")
     t0 = time.time()
-    rand = RandomSubsetBaseline(in_channels=21, edge_index=edge_index, r=r, hidden_channels=16, seed=args.seed)
-    train_fixed_edge_baseline(rand, x_all, y_all, target, args.epochs, args.lr, args.batch_size, args.seed)
-    results["random_subset"] = eval_fixed_edge_baseline(rand, x_all, y_all, target)
-    print(f"random-subset MSE = {results['random_subset']:.5f} ({time.time()-t0:.0f}s)")
+    rand = RandomSubsetBaseline(in_channels=n_features, edge_index=edge_index, r=r, hidden_channels=16, seed=args.seed)
+    train_fixed_edge_baseline(rand, x_train, y_train, target, args.epochs, args.lr, args.batch_size, args.seed)
+    results["random_subset"] = eval_fixed_edge_baseline(rand, x_test, y_test, target)
+    print(f"random-subset MSE (out-of-sample) = {results['random_subset']:.5f} ({time.time()-t0:.0f}s)")
 
     # --- report -----------------------------------------------------------
     base = results["persistence"]
@@ -142,9 +166,11 @@ def main() -> None:
             k2: (1.0 - v / base if base > 0 else 0.0) for k2, v in results.items()
         },
         "comparison_to_step8_no_cia": {
-            "note": "compare against results/step8_baselines_place22_direct.json -- "
-                    "same data/budget/other-baselines, only the full-model row differs (CIA added)",
-            "step8_full_causal_splitter_no_cia_mse": 0.02406,
+            "note": "compare against results/step8_baselines_place{target}_{variant}.json's "
+                    "own full_causal_splitter MSE -- same data/split/budget/other-baselines, "
+                    "only the full-model row differs (CIA added). Read that file at analysis "
+                    "time rather than hardcoding a number here, since B4's honest-split fix "
+                    "changes step 8's numbers run to run.",
         },
     }
     out_path = RESULTS_DIR / f"step8_baselines_cia_place{target}_{args.variant}.json"

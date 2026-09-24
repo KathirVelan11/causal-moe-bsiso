@@ -41,7 +41,7 @@ from causal_moe.data.candidate_edges import (
     build_candidate_source_set,
     expand_source_clusters_to_edge_index,
 )
-from causal_moe.data.splits import EL_NINO_1997_98, GRADUAL_DRIFT_WINDOW, deliberate_shift_mask
+from causal_moe.data.splits import EL_NINO_1997_98, EL_NINO_EVENTS, GRADUAL_DRIFT_WINDOW, deliberate_shift_mask
 from causal_moe.drift.channels import (
     causal_signature_distance_series,
     evaluate_detector,
@@ -53,7 +53,6 @@ from causal_moe.experts.expert import PlaceExpert
 from causal_moe.splitter.dirgnn import DIRGNNSplitter
 from scripts.train_step4_single_place import (
     CACHE_PATH,
-    OLR_LAG0_CHANNEL,
     build_generator_windows,
     load_cache,
     train_place,
@@ -83,6 +82,7 @@ def main() -> None:
         help="train the step-4 pair on only the FIRST N years, then run drift "
              "detection forward over the whole record (see note below)",
     )
+    parser.add_argument("--cache-path", type=Path, default=None)
     args = parser.parse_args()
 
     # Drift detection is a TIME-SERIES analysis: both channels (ADWIN,
@@ -90,15 +90,26 @@ def main() -> None:
     # subsample would silently destroy that, so any cap here is applied as
     # a chronological prefix instead.
     args.cap_contiguous = True
+    # This script has its OWN train/detect split (baseline-only years vs the
+    # whole record forward, per SS4.4's premise, below) -- deliberately
+    # SEPARATE from train_step4_single_place's chronological_split
+    # train/val/test design (B4 audit fix). Passing test_start=None to
+    # train_place() here keeps that script's internal re-split disabled so
+    # this file's own n_train-years cap is the only split in effect.
+    args.val_start = "2005-01-01"
+    args.test_start = None
+    args.use_self_features = False
+    args.self_bypass = False
 
     RESULTS_DIR.mkdir(exist_ok=True)
 
-    cache = load_cache()
+    cache = load_cache(args.cache_path or CACHE_PATH)
     features_all = cache["features"]
     targets_all = cache["targets"]
     sample_dates = cache["sample_dates"]
     n_clusters = cache["n_clusters"]
     target = args.target
+    olr_lag0_channel = cache["olr_lag0_channel"]
 
     # --- Baseline-only training (SS4.4's premise) -------------------------
     # The expert/splitter must be trained on a PRE-SHIFT baseline period
@@ -140,7 +151,7 @@ def main() -> None:
     sources = candidate_set.source_clusters
     edge_index = torch.from_numpy(expand_source_clusters_to_edge_index(sources, target))
 
-    olr_lag0_all = features_all[:, :, OLR_LAG0_CHANNEL]
+    olr_lag0_all = features_all[:, :, olr_lag0_channel]
     gen_windows_all = build_generator_windows(olr_lag0_all, cache["sample_time_index"], args.generator_window)
     x_all = torch.from_numpy(features_all[keep_idx])
     gen_windows = torch.from_numpy(gen_windows_all[keep_idx])
@@ -181,6 +192,22 @@ def main() -> None:
         "gradual_drift_2013_2022": deliberate_shift_mask(dates, GRADUAL_DRIFT_WINDOW),
     }
 
+    # B13 audit fix, 2026-09-23: false alarms were previously counted
+    # against EVERY sample outside whichever single window was being
+    # scored -- so an alarm correctly firing during 1982-83 or 1991-92 (real
+    # El Nino events, just not the one window under test) or during
+    # 2013-2022 (this project's OWN claimed gradual-drift span) was counted
+    # as an error. known_event_mask is the union of every major ONI-listed
+    # El Nino event plus the gradual-drift window itself; only alarms
+    # outside ALL of these count toward the false-alarm rate.
+    known_event_mask = np.zeros_like(windows["abrupt_el_nino_1997_98"])
+    for event_window in EL_NINO_EVENTS:
+        known_event_mask |= deliberate_shift_mask(dates, event_window)
+    known_event_mask |= windows["gradual_drift_2013_2022"]
+    print(f"\nB13 fix: known-event mask covers {int(known_event_mask.sum())}/{T} samples "
+          f"({int(known_event_mask.sum())/365.25:.1f} yr) across "
+          f"{len(EL_NINO_EVENTS)} El Nino events + the gradual-drift window")
+
     report: dict = {
         "target": target,
         "variant": args.variant,
@@ -205,7 +232,7 @@ def main() -> None:
             ("fused_OR", fused_or.alarm_indices),
             ("fused_AND", fused_and.alarm_indices),
         ]:
-            ev = evaluate_detector(alarms, mask, rule=label)
+            ev = evaluate_detector(alarms, mask, rule=label, known_event_mask=known_event_mask)
             entries[label] = {
                 "n_alarms": ev.n_alarms,
                 "detected_in_window": ev.detected,

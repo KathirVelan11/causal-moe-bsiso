@@ -130,7 +130,15 @@ def detect_regime_shifts(
                 confirmed = False
                 break
 
-        if confirmed and rsi > 0:
+        if confirmed:
+            # B-audit fix, 2026-09-23: the per-point loop above already
+            # rejects (confirmed=False) the instant rsi goes negative, so
+            # by the time the loop exits with confirmed=True, rsi is
+            # guaranteed >= 0 -- the algorithm's actual accept condition
+            # (Rodionov 2004: reject iff RSI ever goes negative). The old
+            # extra `and rsi > 0` here silently dropped the boundary case
+            # rsi == 0.0 exactly (e.g. a flat post-shift window), which
+            # `confirmed` already says should be accepted.
             mean_before = float(series[regime_start:i].mean())
             mean_after = float(series[i:horizon].mean())
             result.shifts.append(

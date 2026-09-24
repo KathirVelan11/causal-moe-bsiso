@@ -1,0 +1,34 @@
+{
+  "variant": "direct",
+  "cia_weight": 1.0,
+  "cia_bandwidth": 1.0,
+  "n_candidate_sources": 8,
+  "r": 0.375,
+  "expert_mse": 0.33244503050419827,
+  "persistence_mse": 0.5607212781906128,
+  "climatology_mse": 0.329228013753891,
+  "r2_vs_climatology": -0.009771394340434503,
+  "n_test": 3645,
+  "score_std": 0.002614022698253393,
+  "selected_sources": [
+    6,
+    12,
+    34
+  ],
+  "self_loop_selected": false,
+  "corr_ceiling_top3": [
+    [
+      27,
+      0.33586510367588657
+    ],
+    [
+      48,
+      0.20264439786407548
+    ],
+    [
+      1,
+      0.1938027434081254
+    ]
+  ],
+  "elapsed_s": 82.88194036483765
+}

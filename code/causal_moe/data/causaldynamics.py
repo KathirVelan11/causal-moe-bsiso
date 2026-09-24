@@ -35,7 +35,7 @@ from dataclasses import dataclass
 import numpy as np
 import xarray as xr
 
-from causal_moe.data.windows import LAGS_DAYS, WindowedDataset
+from causal_moe.data.windows import LEGACY_LAGS_DAYS, WindowedDataset
 
 ENSO_MODES_GLOB = "climate/coupled_enso_modes/data/*_N10_T1000.nc"
 
@@ -117,6 +117,7 @@ def load_enso_modes_graphs(root: str) -> list[CausalDynamicsGraph]:
 def build_windowed_dataset_from_graph(
     graph: CausalDynamicsGraph,
     lead_time_steps: int = 1,
+    lags_days: tuple = LEGACY_LAGS_DAYS,
 ) -> WindowedDataset:
     """Reshapes one CausalDynamics graph into the same WindowedDataset shape
     build_windowed_dataset (§4.1 windows.py) produces for real BSISO data:
@@ -137,7 +138,7 @@ def build_windowed_dataset_from_graph(
     if lead_time_steps < 1:
         raise ValueError("lead_time_steps must be >= 1")
 
-    max_lag = max(LAGS_DAYS)
+    max_lag = max(lags_days)
     n_time = graph.n_time
     t_start = max_lag
     t_end = n_time - 1 - lead_time_steps
@@ -151,7 +152,7 @@ def build_windowed_dataset_from_graph(
     per_system_samples = t_end - t_start + 1
     n_systems = graph.n_systems
     n_samples = per_system_samples * n_systems
-    n_features = len(LAGS_DAYS)  # 3 lags x 1 channel
+    n_features = len(lags_days)  # e.g. 3 lags x 1 channel
 
     features = np.empty((n_samples, n_nodes, n_features), dtype=np.float32)
     targets = np.empty((n_samples, n_nodes), dtype=np.float32)
@@ -162,7 +163,7 @@ def build_windowed_dataset_from_graph(
     for sys_idx in range(n_systems):
         series = graph.time_series[sys_idx]  # (T, n_nodes)
         for t in range(t_start, t_end + 1):
-            for lag_pos, lag in enumerate(LAGS_DAYS):
+            for lag_pos, lag in enumerate(lags_days):
                 features[row, :, lag_pos] = series[t - lag, :]
             targets[row, :] = series[t + lead_time_steps, :]
             sample_time_index[row] = t
@@ -174,7 +175,7 @@ def build_windowed_dataset_from_graph(
         targets=targets,
         sample_time_index=sample_time_index,
         lead_time_days=lead_time_steps,
-        lags_days=LAGS_DAYS,
+        lags_days=lags_days,
         field_names=("value",),
     )
     ds.sample_system_index = sample_system_index  # type: ignore[attr-defined]

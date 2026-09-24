@@ -15,3 +15,8 @@ venv/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Raw stdout captures from background training runs — content is already
+# distilled into results/*.json and PROJECT_PLAN.md's Progress Log.
+code/*.log
+code/*.err.log

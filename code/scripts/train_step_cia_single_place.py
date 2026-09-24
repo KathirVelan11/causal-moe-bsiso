@@ -61,11 +61,11 @@ from causal_moe.data.candidate_edges import (
     build_candidate_source_set,
     expand_source_clusters_to_edge_index,
 )
+from causal_moe.data.splits import chronological_split
 from causal_moe.experts.expert import PlaceExpert, compute_expert_loss
 from causal_moe.splitter.cia import cia_alignment_loss
 from causal_moe.splitter.dirgnn import DIRGNNSplitter, LambdaWarmupSchedule
 from scripts.train_step4_single_place import (
-    OLR_LAG0_CHANNEL,
     build_generator_windows,
     load_cache,
     raw_lagged_correlation_auc,
@@ -84,6 +84,8 @@ def train_place_with_cia(
     real_edge_index: np.ndarray,
     n_clusters: int,
     args,
+    sample_dates: np.ndarray | None = None,
+    olr_lag0_channel: int = 5,
 ) -> dict:
     """Same structure as train_step4_single_place.train_place, with one
     addition: a CIA alignment term computed once per mini-batch (see module
@@ -99,31 +101,53 @@ def train_place_with_cia(
 
     causal_edge_index_full = torch.from_numpy(expand_source_clusters_to_edge_index(sources, target))
 
+    n_features = features_all.shape[-1]
     n_samples_full = features_all.shape[0]
-    if args.n_samples_cap > 0 and args.n_samples_cap < n_samples_full:
-        keep_idx = np.arange(args.n_samples_cap)  # chronological prefix (drift-safe, matches step 4/8 convention)
-    else:
-        keep_idx = np.arange(n_samples_full)
-    n_samples = keep_idx.shape[0]
-    print(f"using {n_samples}/{n_samples_full} samples")
 
-    x_all = torch.from_numpy(features_all[keep_idx])  # (n_samples, 50, 21)
+    # B4/Phase 3 audit fix: honest out-of-sample split, same convention as
+    # train_step4_single_place.train_place.
+    if sample_dates is not None and getattr(args, "test_start", None) is not None:
+        from datetime import date as _date
+        split_masks = chronological_split(
+            sample_dates, _date.fromisoformat(args.val_start), _date.fromisoformat(args.test_start)
+        )
+        train_pool_idx = np.nonzero(split_masks.train_mask | split_masks.val_mask)[0]
+        test_idx_full = np.nonzero(split_masks.test_mask)[0]
+    else:
+        n85 = int(0.85 * n_samples_full)
+        train_pool_idx = np.arange(0, n85)
+        test_idx_full = np.arange(n85, n_samples_full)
+
+    if args.n_samples_cap > 0 and args.n_samples_cap < train_pool_idx.shape[0]:
+        keep_idx = train_pool_idx[: args.n_samples_cap]  # B5: chronological prefix
+    else:
+        keep_idx = train_pool_idx
+    n_samples = keep_idx.shape[0]
+    print(f"using {n_samples}/{train_pool_idx.shape[0]} train-pool samples "
+          f"({test_idx_full.shape[0]} held out out-of-sample for test)")
+
+    x_all = torch.from_numpy(features_all[keep_idx])  # (n_samples, 50, n_features)
     y_all = torch.from_numpy(targets_all[keep_idx])  # (n_samples, 50)
     y_target_all = y_all[:, target]  # (n_samples,)
     features_bank = features_all[keep_idx]  # numpy, for swap sampling (whole 50-node graph)
 
-    olr_lag0_all = features_all[:, :, OLR_LAG0_CHANNEL]  # (n_samples_full, 50)
+    x_all_test = torch.from_numpy(features_all[test_idx_full])
+    y_target_test = torch.from_numpy(targets_all[test_idx_full][:, target])
+
+    olr_lag0_all = features_all[:, :, olr_lag0_channel]  # (n_samples_full, 50)
     gen_windows_full = build_generator_windows(olr_lag0_all, sample_time_index, args.generator_window)
     gen_windows = torch.from_numpy(gen_windows_full[keep_idx])  # (n_samples, 50, W, 1)
+    gen_windows_test = torch.from_numpy(gen_windows_full[test_idx_full])
 
     n_causal_candidates = causal_edge_index_full.shape[1]
     r = args.r if args.r is not None else min(0.5, 3.0 / n_causal_candidates)
 
     splitter = DIRGNNSplitter(
-        in_channels=21, hidden_channels=16, r=r,
+        in_channels=n_features, hidden_channels=16, r=r,
         generator_window_len=args.generator_window, generator_in_channels=1,
+        use_self_features=args.use_self_features,
     )
-    expert = PlaceExpert(in_channels=21, hidden_channels=16)
+    expert = PlaceExpert(in_channels=n_features, hidden_channels=16, self_bypass=args.self_bypass)
     optimizer = torch.optim.Adam(list(splitter.parameters()) + list(expert.parameters()), lr=args.lr)
 
     target_mask = torch.zeros(n_clusters, dtype=torch.bool)
@@ -160,7 +184,9 @@ def train_place_with_cia(
                     target_node_mask=target_mask,
                 )
 
-                split = splitter.split(gen_windows[idx], causal_edge_index_full)
+                # Reuse compute_loss's own internal split (perf fix,
+                # 2026-09-23, see train_step4_single_place.py).
+                split = splitter_out.split
                 expert_out = compute_expert_loss(
                     expert, x_all[idx], target, y_target_all[idx],
                     split.causal_edge_index, split.causal_edge_weight,
@@ -206,22 +232,26 @@ def train_place_with_cia(
     elapsed = time.time() - t0
     print(f"training done in {elapsed:.1f}s ({n_samples * args.epochs} sample-steps)")
 
-    # --- Evaluation: identical to step 4's, for direct comparability ------
+    # --- Evaluation: OUT-OF-SAMPLE test span (B4 audit fix), same
+    # convention as step 4/8 so numbers stay comparable across scripts. ----
     splitter.eval()
     expert.eval()
+    n_test = x_all_test.shape[0]
     with torch.no_grad():
-        eval_idx = np.arange(n_samples)
         preds = []
-        for idx in eval_idx:
-            split = splitter.split(gen_windows[idx], causal_edge_index_full)
-            pred = expert(x_all[idx], target, split.causal_edge_index, split.causal_edge_weight)
+        for idx in range(n_test):
+            split = splitter.split(gen_windows_test[idx], causal_edge_index_full)
+            pred = expert(x_all_test[idx], target, split.causal_edge_index, split.causal_edge_weight)
             preds.append(pred.item())
         preds = np.array(preds)
 
-    y_true = y_target_all.numpy()
+    y_true = y_target_test.numpy()
     expert_mse = float(np.mean((preds - y_true) ** 2))
-    persistence_pred = features_all[keep_idx][:, target, OLR_LAG0_CHANNEL]
+    persistence_pred = features_all[test_idx_full][:, target, olr_lag0_channel]
     persistence_mse = float(np.mean((persistence_pred - y_true) ** 2))
+    climatology_pred = float(y_target_all.numpy().mean())
+    climatology_mse = float(np.mean((climatology_pred - y_true) ** 2))
+    r2_vs_climatology = 1.0 - expert_mse / max(climatology_mse, 1e-12)
 
     with torch.no_grad():
         sample_idx = rng.choice(n_samples, size=min(200, n_samples), replace=False)
@@ -239,9 +269,10 @@ def train_place_with_cia(
     corr_ceiling = raw_lagged_correlation_auc(olr_lag0_all, target, sources)
     top3_by_corr = sorted(corr_ceiling.items(), key=lambda kv: -kv[1])[:3]
 
-    print(f"\n--- variant={variant} cia_weight={args.cia_weight} result ---")
+    print(f"\n--- variant={variant} cia_weight={args.cia_weight} result (OUT-OF-SAMPLE, n_test={n_test}) ---")
     print(f"r={r:.3f}  n_candidate_sources={n_sources}  n_selected={n_causal}")
-    print(f"expert MSE={expert_mse:.4f}  persistence-baseline MSE={persistence_mse:.4f}  "
+    print(f"expert MSE={expert_mse:.4f}  persistence MSE={persistence_mse:.4f}  climatology MSE={climatology_mse:.4f}  "
+          f"R^2 vs climatology={r2_vs_climatology:.4f}  "
           f"(expert beats persistence: {expert_mse < persistence_mse})")
     print(f"selected non-self sources: {selected_sources}  self-loop selected: {self_selected}")
     print(f"mean edge score: {mean_scores.mean():.4f}  std: {mean_scores.std():.4f}")
@@ -255,6 +286,9 @@ def train_place_with_cia(
         "r": r,
         "expert_mse": expert_mse,
         "persistence_mse": persistence_mse,
+        "climatology_mse": climatology_mse,
+        "r2_vs_climatology": r2_vs_climatology,
+        "n_test": n_test,
         "score_std": float(mean_scores.std()),
         "selected_sources": [int(s) for s in selected_sources],
         "self_loop_selected": bool(self_selected),
@@ -278,16 +312,24 @@ def main() -> None:
     parser.add_argument("--cia-bandwidth", type=float, default=1.0)
     parser.add_argument("--n-samples-cap", type=int, default=8000)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--cache-path", type=Path, default=None)
+    parser.add_argument("--val-start", type=str, default="2005-01-01")
+    parser.add_argument("--test-start", type=str, default="2013-01-01")
+    parser.add_argument("--use-self-features", type=lambda s: s.lower() != "false", default=False)
+    parser.add_argument("--self-bypass", type=lambda s: s.lower() != "false", default=False)
     args = parser.parse_args()
 
     t0 = time.time()
-    cache = load_cache()
+    from scripts.train_step4_single_place import CACHE_PATH as DEFAULT_CACHE_PATH
+    cache = load_cache(args.cache_path or DEFAULT_CACHE_PATH)
     print(f"loaded cache in {time.time()-t0:.1f}s: features {cache['features'].shape}, "
           f"{cache['n_clusters']} clusters, {cache['edge_index'].shape[1]} directed real edges")
 
+    sample_dates = cache["sample_dates"].astype("datetime64[D]")
     result = train_place_with_cia(
         args.variant, args.target, cache["features"], cache["targets"],
         cache["sample_time_index"], cache["edge_index"], cache["n_clusters"], args,
+        sample_dates=sample_dates, olr_lag0_channel=cache["olr_lag0_channel"],
     )
 
     RESULTS_DIR.mkdir(exist_ok=True)

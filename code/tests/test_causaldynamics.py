@@ -10,7 +10,7 @@ from causal_moe.data.causaldynamics import (
     build_windowed_dataset_from_graph,
     load_enso_modes_graphs,
 )
-from causal_moe.data.windows import LAGS_DAYS
+from causal_moe.data.windows import LEGACY_LAGS_DAYS
 
 REAL_DATA_ROOT = os.path.join(
     os.path.dirname(__file__), "..", "data_external", "causaldynamics", "extracted_inputs"
@@ -40,7 +40,7 @@ def test_build_windowed_dataset_from_graph_shapes():
     # valid t per system in [10, 30-1-1] = [10, 28] -> 19 samples/system * 2 systems
     assert ds.features.shape == (38, 4, 3)
     assert ds.targets.shape == (38, 4)
-    assert ds.lags_days == LAGS_DAYS
+    assert ds.lags_days == LEGACY_LAGS_DAYS
 
 
 def test_build_windowed_dataset_from_graph_lag_values_correct():
@@ -137,7 +137,7 @@ def test_real_graph_reshapes_end_to_end():
 
     ds = build_windowed_dataset_from_graph(ao, lead_time_steps=1)
 
-    per_system = ao.n_time - max(LAGS_DAYS) - 1  # t in [10, 998]
+    per_system = ao.n_time - max(LEGACY_LAGS_DAYS) - 1  # t in [10, 998]
     assert ds.features.shape == (per_system * ao.n_systems, 10, 3)
     assert ds.targets.shape == (per_system * ao.n_systems, 10)
     assert not np.isnan(ds.features).any()

@@ -36,10 +36,24 @@ class PlaceExpert(nn.Module):
     self-loop wasn't selected), then an MLP regressor.
     """
 
-    def __init__(self, in_channels: int, hidden_channels: int = 32):
+    def __init__(self, in_channels: int, hidden_channels: int = 32, self_bypass: bool = False):
+        """self_bypass: when True (original behaviour), the target's own raw
+        features are concatenated into the MLP input alongside the
+        aggregated causal-edge features -- this is Bug 2 (audit B2): at
+        lead 1, the target's own features alone give R^2~0.92, so the MLP's
+        optimal strategy is to ignore `aggregated` entirely, and gradient
+        into `causal_edge_weight` (and through it the rationale generator)
+        collapses to ~0. Default False forces the forecast to depend only
+        on the selected causal edges; self is still available as a
+        candidate SOURCE (it can be selected like any other edge, see
+        candidate_edges.py), just no longer force-fed unconditionally.
+        Kept as an explicit opt-in flag so the old behaviour survives as an
+        ablation."""
         super().__init__()
+        self.self_bypass = self_bypass
+        mlp_in = (2 * in_channels) if self_bypass else in_channels
         self.mlp = nn.Sequential(
-            nn.Linear(2 * in_channels, hidden_channels),
+            nn.Linear(mlp_in, hidden_channels),
             nn.ReLU(),
             nn.Linear(hidden_channels, hidden_channels),
             nn.ReLU(),
@@ -78,9 +92,11 @@ class PlaceExpert(nn.Module):
         weight_total = weights.sum().clamp_min(1e-6)
         aggregated = weighted_sum / weight_total  # weighted mean, scale-invariant to k
 
-        target_features = x_all[target]
-        combined = torch.cat([target_features, aggregated], dim=-1)
-        return self.mlp(combined).squeeze(-1)
+        if self.self_bypass:
+            target_features = x_all[target]
+            combined = torch.cat([target_features, aggregated], dim=-1)
+            return self.mlp(combined).squeeze(-1)
+        return self.mlp(aggregated).squeeze(-1)
 
 
 @dataclass

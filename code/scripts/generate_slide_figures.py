@@ -257,10 +257,10 @@ def fig_forecast_vs_actual():
     from causal_moe.data.candidate_edges import build_candidate_source_set, expand_source_clusters_to_edge_index
     from causal_moe.experts.expert import PlaceExpert
     from causal_moe.splitter.dirgnn import DIRGNNSplitter
-    from train_step4_single_place import load_cache, build_generator_windows, OLR_LAG0_CHANNEL
+    from train_step4_single_place import load_cache, build_generator_windows, CACHE_PATH
 
     target = 22
-    cache = load_cache()
+    cache = load_cache(CACHE_PATH)
     candidate_set = build_candidate_source_set(cache["edge_index"], target, "direct", n_clusters=cache["n_clusters"])
     sources = candidate_set.source_clusters
     causal_edge_index_full = torch.from_numpy(expand_source_clusters_to_edge_index(sources, target))
@@ -269,8 +269,9 @@ def fig_forecast_vs_actual():
     features = cache["features"][:n_samples_cap]
     targets = cache["targets"][:n_samples_cap]
     dates = cache["sample_dates"][:n_samples_cap]
+    n_features = features.shape[-1]
 
-    olr_lag0_all = cache["features"][:, :, OLR_LAG0_CHANNEL]
+    olr_lag0_all = cache["features"][:, :, cache["olr_lag0_channel"]]
     gen_windows_full = build_generator_windows(olr_lag0_all, cache["sample_time_index"], 10)
     gen_windows = torch.from_numpy(gen_windows_full[:n_samples_cap])
 
@@ -282,8 +283,8 @@ def fig_forecast_vs_actual():
     r = min(0.5, 3.0 / n_causal_candidates)
 
     torch.manual_seed(0)
-    splitter = DIRGNNSplitter(in_channels=21, hidden_channels=16, r=r, generator_window_len=10, generator_in_channels=1)
-    expert = PlaceExpert(in_channels=21, hidden_channels=16)
+    splitter = DIRGNNSplitter(in_channels=n_features, hidden_channels=16, r=r, generator_window_len=10, generator_in_channels=1, use_self_features=False)
+    expert = PlaceExpert(in_channels=n_features, hidden_channels=16)
     optimizer = torch.optim.Adam(list(splitter.parameters()) + list(expert.parameters()), lr=1e-3)
 
     from causal_moe.experts.expert import compute_expert_loss
