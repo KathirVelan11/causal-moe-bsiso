@@ -165,6 +165,7 @@ def train_place(
     sample_dates: np.ndarray | None = None,
     olr_lag0_channel: int = 5,
     lags_days: tuple = (0, 5, 10),
+    lead_time_days: int = 1,
 ) -> dict:
     """Trains the splitter + expert jointly for ONE place and returns both
     the evaluation summary AND the trained modules, so later steps (SS9
@@ -192,7 +193,10 @@ def train_place(
         from datetime import date as _date
         val_start = _date.fromisoformat(args.val_start)
         test_start = _date.fromisoformat(args.test_start)
-        split_masks = chronological_split(sample_dates_full, val_start, test_start)
+        # B22 audit fix: pass the real lead time so no training/val sample's
+        # TARGET (lead_time_days after its "today") falls inside the next
+        # split's window -- see splits.py's chronological_split docstring.
+        split_masks = chronological_split(sample_dates_full, val_start, test_start, lead_time_days=lead_time_days)
         train_pool_idx = np.nonzero(split_masks.train_mask | split_masks.val_mask)[0]
         test_idx_full = np.nonzero(split_masks.test_mask)[0]
     else:
@@ -456,7 +460,7 @@ def main() -> None:
             variant, args.target, cache["features"], cache["targets"],
             cache["sample_time_index"], cache["edge_index"], cache["n_clusters"], args,
             sample_dates=sample_dates, olr_lag0_channel=cache["olr_lag0_channel"],
-            lags_days=cache["lags_days"],
+            lags_days=cache["lags_days"], lead_time_days=int(cache["lead_time_days"]),
         )
         results.append(result)
 
