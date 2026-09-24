@@ -53,6 +53,7 @@ import torch
 
 from causal_moe.data.candidate_edges import (
     build_candidate_source_set,
+    cap_candidate_source_set,
     expand_source_clusters_to_edge_index,
 )
 from causal_moe.data.splits import chronological_split
@@ -182,9 +183,27 @@ def train_place(
     torch.manual_seed(args.seed)
 
     candidate_set = build_candidate_source_set(real_edge_index, target, variant, n_clusters=n_clusters)
+
+    # B18 fix: optionally shrink a large candidate pool (typically "full"'s
+    # all-50) to the top-`max_candidates` sources by raw lagged correlation
+    # with the target, before it ever reaches the encoder. Root cause was
+    # candidate-pool-SIZE diluting the shared encoder's edge-score
+    # discrimination (PROJECT_PLAN.md Bug 18) -- confirmed at the mesh-wide
+    # level: "full" (50 candidates) cleared the discrimination gate at
+    # 0/50 places vs "direct" (~6 candidates) at 27/50, while forecasting
+    # accuracy stayed flat across pool sizes. Capping keeps most of a
+    # large variant's reach while shrinking the pool back toward the range
+    # where discrimination survives. Off by default (max_candidates=0) so
+    # existing direct/2hop/full results are reproduced exactly unless
+    # explicitly requested.
+    max_candidates = getattr(args, "max_candidates", 0)
+    if max_candidates and max_candidates > 0:
+        olr_lag0_series_full = features_all[:, :, olr_lag0_channel]
+        candidate_set = cap_candidate_source_set(candidate_set, olr_lag0_series_full, max_candidates)
+
     sources = candidate_set.source_clusters
     n_sources = sources.shape[0]
-    print(f"\n=== variant={variant}  target={target}  n_candidate_sources={n_sources} ===")
+    print(f"\n=== variant={candidate_set.variant}  target={target}  n_candidate_sources={n_sources} ===")
 
     causal_edge_index_full = torch.from_numpy(expand_source_clusters_to_edge_index(sources, target))
 
@@ -398,7 +417,7 @@ def train_place(
     print(f"data-hardness ceiling, top-3 sources by raw |lagged correlation|: {top3_by_corr}")
 
     return {
-        "variant": variant,
+        "variant": candidate_set.variant,
         "n_candidate_sources": n_sources,
         "r": r,
         "expert_mse": expert_mse,
@@ -451,6 +470,14 @@ def main() -> None:
                          help="B7 audit fix: feed the rationale generator all 6 fields' lag-0 values "
                               "instead of OLR alone (at lead 7, OLR-only gives R^2=0.065 vs 0.206 for all "
                               "six fields; corroborated by Maeda et al. 2025, GRL). Default off (backward compat).")
+    parser.add_argument("--max-candidates", type=int, default=0,
+                         help="B18 audit fix: if >0, shrink the candidate source pool (e.g. \"full\"'s all-50) "
+                              "to this many sources, keeping the top-K by raw lagged |correlation| with the "
+                              "target plus the target itself. Targets Bug 18's root cause (edge-score "
+                              "discrimination collapses as the shared encoder's candidate pool grows -- "
+                              "confirmed mesh-wide: full/50-candidates cleared the discrimination gate at "
+                              "0/50 places vs direct/~6-candidates at 27/50). Default 0 = off, reproduces "
+                              "existing direct/2hop/full results exactly.")
     args = parser.parse_args()
 
     t0 = time.time()

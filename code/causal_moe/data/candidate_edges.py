@@ -23,6 +23,20 @@ lag structure, same convention as steps 2/3's edge_index tensors:
 Self (the target cluster's own history) is always included as a candidate
 source, since self-persistence is a real, physically meaningful driver
 (cf. step 3's injected rule, where every non-rule cluster self-persists).
+
+**B18 fix (2026-09-24)**: `cap_candidate_source_set` below shrinks any
+source set (typically "full"'s all-50) down to the top-K sources by raw
+lagged |correlation| with the target, plus the target itself. This
+directly targets Bug 18's root cause -- the shared DIR-GNN encoder loses
+edge-score discrimination as the candidate pool it scores in one forward
+pass grows (confirmed both on a synthetic harness and, at the full
+50-place mesh-wide level, on the real mesh: `full`'s pool of 50
+candidates cleared the discrimination gate at 0/50 places while
+`direct`'s ~6-candidate pool cleared it at 27/50, PROJECT_PLAN.md B18 +
+Phase 9.4). A capped pool keeps most of `full`'s reach (it can still
+pick a source `direct`/`2hop` would never offer) while shrinking the
+encoder's simultaneous candidate count back toward the range where
+discrimination survives.
 """
 
 from __future__ import annotations
@@ -76,6 +90,86 @@ def build_candidate_source_set(
         target=target,
         variant=variant,
         source_clusters=np.array(sorted(sources), dtype=np.int64),
+    )
+
+
+def rank_sources_by_lagged_correlation(
+    olr_lag0_series: np.ndarray,
+    target: int,
+    source_clusters: np.ndarray,
+    lags: tuple[int, ...] = (0, 1, 5, 10),
+) -> list[tuple[int, float]]:
+    """Ranks candidate sources by their best-lag raw |correlation| with the
+    target's own OLR series, descending. Same diagnostic already used
+    (post-hoc, for reporting only) as `raw_lagged_correlation_auc` in
+    `scripts/train_step4_single_place.py` -- factored out here so
+    `cap_candidate_source_set` can use it BEFORE training, not just to
+    describe a result after the fact.
+
+    olr_lag0_series: (n_samples, n_clusters) float array, lag-0 (today's)
+        OLR for every cluster -- e.g. `features[:, :, olr_lag0_channel]`.
+    Returns [(source_id, best_abs_corr), ...] sorted by best_abs_corr desc.
+    The target itself is never included (self is handled separately by the
+    caller -- it is always kept, never subject to the cap).
+    """
+    n_t = olr_lag0_series.shape[0]
+    scored = []
+    for src in source_clusters:
+        src = int(src)
+        if src == target:
+            continue
+        best = 0.0
+        for lag in lags:
+            if lag == 0:
+                a, b = olr_lag0_series[:, src], olr_lag0_series[:, target]
+            else:
+                a, b = olr_lag0_series[: n_t - lag, src], olr_lag0_series[lag:, target]
+            if a.std() < 1e-8 or b.std() < 1e-8:
+                continue
+            corr = float(np.corrcoef(a, b)[0, 1])
+            best = max(best, abs(corr))
+        scored.append((src, best))
+    scored.sort(key=lambda pair: -pair[1])
+    return scored
+
+
+def cap_candidate_source_set(
+    candidate_set: CandidateSourceSet,
+    olr_lag0_series: np.ndarray,
+    max_candidates: int,
+) -> CandidateSourceSet:
+    """**B18 fix.** Shrinks `candidate_set.source_clusters` to at most
+    `max_candidates` non-self sources (plus the target itself, always
+    kept) by keeping only the top-`max_candidates` sources ranked by raw
+    lagged |correlation| with the target (`rank_sources_by_lagged_correlation`).
+
+    This is a DATA-dependent step (needs the actual OLR series to rank
+    sources), so it is kept separate from the pure-topology
+    `build_candidate_source_set` above rather than folded into it -- call
+    this second, only when `candidate_set.source_clusters` is larger than
+    `max_candidates`.
+
+    If the set is already at or below `max_candidates`, returns it
+    unchanged (capping `direct`'s ~6 candidates would defeat the point --
+    this is meant to shrink `full`'s 50, or `2hop`'s 15-20, not tighten an
+    already-small pool further).
+    """
+    n_non_self = candidate_set.source_clusters.shape[0] - int(
+        candidate_set.target in candidate_set.source_clusters
+    )
+    if n_non_self <= max_candidates:
+        return candidate_set
+
+    ranked = rank_sources_by_lagged_correlation(
+        olr_lag0_series, candidate_set.target, candidate_set.source_clusters
+    )
+    kept = {src for src, _ in ranked[:max_candidates]}
+    kept.add(candidate_set.target)
+
+    return CandidateSourceSet(
+        target=candidate_set.target,
+        variant=f"{candidate_set.variant}_capped{max_candidates}",
+        source_clusters=np.array(sorted(kept), dtype=np.int64),
     )
 
 
