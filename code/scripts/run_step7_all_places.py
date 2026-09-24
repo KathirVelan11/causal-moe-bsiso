@@ -66,14 +66,24 @@ def main() -> None:
     parser.add_argument("--generator-window", type=int, default=10)
     parser.add_argument("--entropy-weight", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--cache-path", type=Path, default=None)
+    parser.add_argument("--val-start", type=str, default="2005-01-01")
+    parser.add_argument("--test-start", type=str, default="2013-01-01")
+    parser.add_argument("--use-self-features", type=lambda s: s.lower() != "false", default=False)
+    parser.add_argument("--self-bypass", type=lambda s: s.lower() != "false", default=False)
+    parser.add_argument("--generator-all-fields", action="store_true",
+                         help="B7 audit fix: feed the rationale generator all 6 fields, not just OLR "
+                              "(train_place reads this via getattr; this script never exposed it before Phase 9.2).")
     args = parser.parse_args()
 
     RESULTS_DIR.mkdir(exist_ok=True)
-    cache = load_cache()
+    from scripts.train_step4_single_place import CACHE_PATH as DEFAULT_CACHE_PATH
+    cache = load_cache(args.cache_path or DEFAULT_CACHE_PATH)
     n_clusters = cache["n_clusters"]
     places = parse_places(args.places, n_clusters)
+    sample_dates = cache["sample_dates"].astype("datetime64[D]")
     print(f"step 7: {len(places)} places, variant={args.variant}, epochs={args.epochs}, "
-          f"cap={args.n_samples_cap}")
+          f"cap={args.n_samples_cap}, OUT-OF-SAMPLE eval (test>={args.test_start})")
 
     rows = []
     t_start = time.time()
@@ -88,6 +98,8 @@ def main() -> None:
             real_edge_index=cache["edge_index"],
             n_clusters=n_clusters,
             args=args,
+            sample_dates=sample_dates,
+            olr_lag0_channel=cache["olr_lag0_channel"],
         )
         beats = res["expert_mse"] < res["persistence_mse"]
         skill = 1.0 - (res["expert_mse"] / res["persistence_mse"]) if res["persistence_mse"] > 0 else 0.0
@@ -96,6 +108,9 @@ def main() -> None:
             "n_candidate_sources": int(res["n_candidate_sources"]),
             "expert_mse": res["expert_mse"],
             "persistence_mse": res["persistence_mse"],
+            "climatology_mse": res.get("climatology_mse"),
+            "r2_vs_persistence": res.get("r2_vs_persistence"),
+            "r2_vs_climatology": res.get("r2_vs_climatology"),
             "skill_vs_persistence": skill,
             "beats_persistence": bool(beats),
             "score_std": res["score_std"],
@@ -105,11 +120,13 @@ def main() -> None:
         eta = (elapsed_all / (k + 1)) * (len(places) - k - 1)
         print(f"[{k+1}/{len(places)}] place {place:>2}: mse={res['expert_mse']:.4f} "
               f"persist={res['persistence_mse']:.4f} skill={skill:+.3f} "
+              f"R2vsClim={res.get('r2_vs_climatology', float('nan')):+.3f} "
               f"beats={'Y' if beats else 'n'} ({time.time()-t0:.0f}s, ETA {eta/60:.0f}m)")
 
         # checkpoint after every place so a long run is never lost
         out_path = RESULTS_DIR / f"step7_all_places_{args.variant}.json"
         skills = [r["skill_vs_persistence"] for r in rows]
+        r2_clims = [r["r2_vs_climatology"] for r in rows if r["r2_vs_climatology"] is not None]
         out_path.write_text(json.dumps({
             "variant": args.variant,
             "epochs": args.epochs,
@@ -118,15 +135,20 @@ def main() -> None:
             "n_beating_persistence": sum(1 for r in rows if r["beats_persistence"]),
             "skill_mean": float(np.mean(skills)),
             "skill_median": float(np.median(skills)),
+            "r2_vs_climatology_mean": float(np.mean(r2_clims)) if r2_clims else None,
             "places": rows,
         }, indent=2))
 
     skills = [r["skill_vs_persistence"] for r in rows]
+    r2_clims = [r["r2_vs_climatology"] for r in rows if r["r2_vs_climatology"] is not None]
     n_beat = sum(1 for r in rows if r["beats_persistence"])
-    print(f"\n=== step 7 summary ({len(rows)} places) ===")
+    print(f"\n=== step 7 summary ({len(rows)} places, OUT-OF-SAMPLE) ===")
     print(f"places beating persistence: {n_beat}/{len(rows)} ({100*n_beat/max(len(rows),1):.0f}%)")
     print(f"skill vs persistence: mean={np.mean(skills):+.4f} median={np.median(skills):+.4f} "
           f"min={np.min(skills):+.4f} max={np.max(skills):+.4f}")
+    if r2_clims:
+        print(f"R^2 vs climatology: mean={np.mean(r2_clims):+.4f} median={np.median(r2_clims):+.4f} "
+              f"min={np.min(r2_clims):+.4f} max={np.max(r2_clims):+.4f}")
     worst = sorted(rows, key=lambda r: r["skill_vs_persistence"])[:5]
     best = sorted(rows, key=lambda r: -r["skill_vs_persistence"])[:5]
     print(f"best places:  {[(r['place'], round(r['skill_vs_persistence'],3)) for r in best]}")

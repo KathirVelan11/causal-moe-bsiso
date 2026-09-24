@@ -39,6 +39,7 @@ print = functools.partial(print, flush=True)  # noqa: A001
 import numpy as np
 
 from scripts.run_step7_all_places import parse_places
+from scripts.train_step4_single_place import CACHE_PATH as DEFAULT_CACHE_PATH
 from scripts.train_step4_single_place import load_cache
 from scripts.train_step_gsina_single_place import train_place_with_gsina
 
@@ -62,14 +63,20 @@ def main() -> None:
     parser.add_argument("--cia-weight", type=float, default=0.0)
     parser.add_argument("--cia-bandwidth", type=float, default=0.3)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--cache-path", type=Path, default=None)
+    parser.add_argument("--val-start", type=str, default="2005-01-01")
+    parser.add_argument("--test-start", type=str, default="2013-01-01")
+    parser.add_argument("--use-self-features", type=lambda s: s.lower() != "false", default=False)
+    parser.add_argument("--self-bypass", type=lambda s: s.lower() != "false", default=False)
     args = parser.parse_args()
 
     RESULTS_DIR.mkdir(exist_ok=True)
-    cache = load_cache()
+    cache = load_cache(args.cache_path or DEFAULT_CACHE_PATH)
     n_clusters = cache["n_clusters"]
     places = parse_places(args.places, n_clusters)
+    sample_dates = cache["sample_dates"].astype("datetime64[D]")
     print(f"step 7 (GSINA): {len(places)} places, variant={args.variant}, epochs={args.epochs}, "
-          f"cap={args.n_samples_cap}, gsina_iters={args.gsina_iters}")
+          f"cap={args.n_samples_cap}, gsina_iters={args.gsina_iters}, OUT-OF-SAMPLE eval")
 
     rows = []
     t_start = time.time()
@@ -84,6 +91,8 @@ def main() -> None:
             real_edge_index=cache["edge_index"],
             n_clusters=n_clusters,
             args=args,
+            sample_dates=sample_dates,
+            olr_lag0_channel=cache["olr_lag0_channel"],
         )
         beats = res["expert_mse"] < res["persistence_mse"]
         skill = 1.0 - (res["expert_mse"] / res["persistence_mse"]) if res["persistence_mse"] > 0 else 0.0

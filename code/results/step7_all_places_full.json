@@ -1,0 +1,862 @@
+{
+  "variant": "full",
+  "epochs": 5,
+  "n_samples_cap": 4000,
+  "n_places_done": 50,
+  "n_beating_persistence": 50,
+  "skill_mean": 0.3960967716874804,
+  "skill_median": 0.39823386205255484,
+  "r2_vs_climatology_mean": -0.02021352666352434,
+  "places": [
+    {
+      "place": 0,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.2030248339790231,
+      "persistence_mse": 0.2957981824874878,
+      "climatology_mse": 0.2035374492406845,
+      "r2_vs_persistence": 0.3136373176072135,
+      "r2_vs_climatology": 0.002518530440338007,
+      "skill_vs_persistence": 0.3136373176072135,
+      "beats_persistence": true,
+      "score_std": 0.006790751591324806,
+      "selected_sources": [
+        22,
+        38,
+        39
+      ]
+    },
+    {
+      "place": 1,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3613220326289694,
+      "persistence_mse": 0.5769694447517395,
+      "climatology_mse": 0.35889068245887756,
+      "r2_vs_persistence": 0.3737588083465315,
+      "r2_vs_climatology": -0.006774626060040978,
+      "skill_vs_persistence": 0.3737588083465315,
+      "beats_persistence": true,
+      "score_std": 0.006215794011950493,
+      "selected_sources": [
+        21,
+        23,
+        29
+      ]
+    },
+    {
+      "place": 2,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.31138272334516987,
+      "persistence_mse": 0.49201735854148865,
+      "climatology_mse": 0.30327728390693665,
+      "r2_vs_persistence": 0.3671306145209652,
+      "r2_vs_climatology": -0.026726167333787076,
+      "skill_vs_persistence": 0.3671306145209652,
+      "beats_persistence": true,
+      "score_std": 0.0032646467443555593,
+      "selected_sources": [
+        28,
+        29,
+        39
+      ]
+    },
+    {
+      "place": 3,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.30356826469384046,
+      "persistence_mse": 0.4873024821281433,
+      "climatology_mse": 0.30200108885765076,
+      "r2_vs_persistence": 0.3770434671949552,
+      "r2_vs_climatology": -0.0051893052509104365,
+      "skill_vs_persistence": 0.3770434671949552,
+      "beats_persistence": true,
+      "score_std": 0.004676334094256163,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 4,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.23077274439187248,
+      "persistence_mse": 0.3694433867931366,
+      "climatology_mse": 0.21970543265342712,
+      "r2_vs_persistence": 0.37535018180988666,
+      "r2_vs_climatology": -0.050373409545604764,
+      "skill_vs_persistence": 0.37535018180988666,
+      "beats_persistence": true,
+      "score_std": 0.003884704317897558,
+      "selected_sources": [
+        15,
+        29,
+        39
+      ]
+    },
+    {
+      "place": 5,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.333597638518483,
+      "persistence_mse": 0.5023619532585144,
+      "climatology_mse": 0.34741660952568054,
+      "r2_vs_persistence": 0.3359416724243558,
+      "r2_vs_climatology": 0.039776368280331376,
+      "skill_vs_persistence": 0.3359416724243558,
+      "beats_persistence": true,
+      "score_std": 0.009532476775348186,
+      "selected_sources": [
+        1,
+        7,
+        26
+      ]
+    },
+    {
+      "place": 6,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.23615017452681417,
+      "persistence_mse": 0.43249163031578064,
+      "climatology_mse": 0.22455181181430817,
+      "r2_vs_persistence": 0.4539774692185584,
+      "r2_vs_climatology": -0.051651165131088694,
+      "skill_vs_persistence": 0.4539774692185584,
+      "beats_persistence": true,
+      "score_std": 0.003581549972295761,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 7,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.32652201678630827,
+      "persistence_mse": 0.516083836555481,
+      "climatology_mse": 0.3239569067955017,
+      "r2_vs_persistence": 0.36730818975919255,
+      "r2_vs_climatology": -0.007918059275784373,
+      "skill_vs_persistence": 0.36730818975919255,
+      "beats_persistence": true,
+      "score_std": 0.008379513397812843,
+      "selected_sources": [
+        20,
+        21,
+        44
+      ]
+    },
+    {
+      "place": 8,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3631987881702742,
+      "persistence_mse": 0.710882306098938,
+      "climatology_mse": 0.3640619218349457,
+      "r2_vs_persistence": 0.48908731437785213,
+      "r2_vs_climatology": 0.00237084301571866,
+      "skill_vs_persistence": 0.48908731437785213,
+      "beats_persistence": true,
+      "score_std": 0.004380521364510059,
+      "selected_sources": [
+        1,
+        26,
+        44
+      ]
+    },
+    {
+      "place": 9,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.25914274421627287,
+      "persistence_mse": 0.3887641727924347,
+      "climatology_mse": 0.24131883680820465,
+      "r2_vs_persistence": 0.3334191719496953,
+      "r2_vs_climatology": -0.07386040660486981,
+      "skill_vs_persistence": 0.3334191719496953,
+      "beats_persistence": true,
+      "score_std": 0.003780620638281107,
+      "selected_sources": [
+        26,
+        32,
+        39
+      ]
+    },
+    {
+      "place": 10,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.38934128881660585,
+      "persistence_mse": 0.6407858729362488,
+      "climatology_mse": 0.38551634550094604,
+      "r2_vs_persistence": 0.3924003239451238,
+      "r2_vs_climatology": -0.009921611263173924,
+      "skill_vs_persistence": 0.3924003239451238,
+      "beats_persistence": true,
+      "score_std": 0.0025907603558152914,
+      "selected_sources": [
+        26,
+        38,
+        39
+      ]
+    },
+    {
+      "place": 11,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.36409860384351767,
+      "persistence_mse": 0.668262779712677,
+      "climatology_mse": 0.35220664739608765,
+      "r2_vs_persistence": 0.45515654186207455,
+      "r2_vs_climatology": -0.03376414538268624,
+      "skill_vs_persistence": 0.45515654186207455,
+      "beats_persistence": true,
+      "score_std": 0.003320199903100729,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 12,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.29166172675577573,
+      "persistence_mse": 0.4150504171848297,
+      "climatology_mse": 0.2865068316459656,
+      "r2_vs_persistence": 0.2972860291671666,
+      "r2_vs_climatology": -0.01799222406040224,
+      "skill_vs_persistence": 0.2972860291671666,
+      "beats_persistence": true,
+      "score_std": 0.003898715367540717,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 13,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.22098721471199842,
+      "persistence_mse": 0.3989274203777313,
+      "climatology_mse": 0.21105515956878662,
+      "r2_vs_persistence": 0.4460465653056567,
+      "r2_vs_climatology": -0.04705904922440318,
+      "skill_vs_persistence": 0.4460465653056567,
+      "beats_persistence": true,
+      "score_std": 0.0032360265031456947,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 14,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.16023153928137596,
+      "persistence_mse": 0.2564542293548584,
+      "climatology_mse": 0.1624796837568283,
+      "r2_vs_persistence": 0.3752041458452148,
+      "r2_vs_climatology": 0.013836465110413365,
+      "skill_vs_persistence": 0.3752041458452148,
+      "beats_persistence": true,
+      "score_std": 0.002856403822079301,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 15,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.47964202480603063,
+      "persistence_mse": 0.8202798366546631,
+      "climatology_mse": 0.462751179933548,
+      "r2_vs_persistence": 0.4152702487944253,
+      "r2_vs_climatology": -0.03650092232051838,
+      "skill_vs_persistence": 0.4152702487944253,
+      "beats_persistence": true,
+      "score_std": 0.0059944079257547855,
+      "selected_sources": [
+        1,
+        21,
+        26
+      ]
+    },
+    {
+      "place": 16,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.2737914474068617,
+      "persistence_mse": 0.4951164424419403,
+      "climatology_mse": 0.26432716846466064,
+      "r2_vs_persistence": 0.447016047262523,
+      "r2_vs_climatology": -0.03580516901525521,
+      "skill_vs_persistence": 0.447016047262523,
+      "beats_persistence": true,
+      "score_std": 0.004198003094643354,
+      "selected_sources": [
+        21,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 17,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.315045888995906,
+      "persistence_mse": 0.4716525077819824,
+      "climatology_mse": 0.30411863327026367,
+      "r2_vs_persistence": 0.33203813443618235,
+      "r2_vs_climatology": -0.03593089843966091,
+      "skill_vs_persistence": 0.33203813443618235,
+      "beats_persistence": true,
+      "score_std": 0.004027404822409153,
+      "selected_sources": [
+        28,
+        29,
+        39
+      ]
+    },
+    {
+      "place": 18,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.30434837536038045,
+      "persistence_mse": 0.5187652111053467,
+      "climatology_mse": 0.3307870924472809,
+      "r2_vs_persistence": 0.41332153959997175,
+      "r2_vs_climatology": 0.07992668907150324,
+      "skill_vs_persistence": 0.41332153959997175,
+      "beats_persistence": true,
+      "score_std": 0.008539087139070034,
+      "selected_sources": [
+        1,
+        26,
+        44
+      ]
+    },
+    {
+      "place": 19,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.25702457138620144,
+      "persistence_mse": 0.47676271200180054,
+      "climatology_mse": 0.24969074130058289,
+      "r2_vs_persistence": 0.4608962384935197,
+      "r2_vs_climatology": -0.029371654100661893,
+      "skill_vs_persistence": 0.4608962384935197,
+      "beats_persistence": true,
+      "score_std": 0.0025969110429286957,
+      "selected_sources": [
+        29,
+        39,
+        46
+      ]
+    },
+    {
+      "place": 20,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3122165290790205,
+      "persistence_mse": 0.48774826526641846,
+      "climatology_mse": 0.3082895874977112,
+      "r2_vs_persistence": 0.3598818257026887,
+      "r2_vs_climatology": -0.012737833973515134,
+      "skill_vs_persistence": 0.3598818257026887,
+      "beats_persistence": true,
+      "score_std": 0.003702782327309251,
+      "selected_sources": [
+        26,
+        32,
+        39
+      ]
+    },
+    {
+      "place": 21,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.40072429815025473,
+      "persistence_mse": 0.6248741745948792,
+      "climatology_mse": 0.37324199080467224,
+      "r2_vs_persistence": 0.3587120184474677,
+      "r2_vs_climatology": -0.07363133844167269,
+      "skill_vs_persistence": 0.3587120184474677,
+      "beats_persistence": true,
+      "score_std": 0.004131780005991459,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 22,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3300628265313034,
+      "persistence_mse": 0.5607212781906128,
+      "climatology_mse": 0.329228013753891,
+      "r2_vs_persistence": 0.41136026156100114,
+      "r2_vs_climatology": -0.0025356675086478653,
+      "skill_vs_persistence": 0.41136026156100114,
+      "beats_persistence": true,
+      "score_std": 0.004079760517925024,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 23,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.381493313049773,
+      "persistence_mse": 0.6350836157798767,
+      "climatology_mse": 0.36868053674697876,
+      "r2_vs_persistence": 0.3993022279730791,
+      "r2_vs_climatology": -0.03475305861233324,
+      "skill_vs_persistence": 0.3993022279730791,
+      "beats_persistence": true,
+      "score_std": 0.0045259492471814156,
+      "selected_sources": [
+        1,
+        10,
+        26
+      ]
+    },
+    {
+      "place": 24,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.26446934905060526,
+      "persistence_mse": 0.4294463098049164,
+      "climatology_mse": 0.24483275413513184,
+      "r2_vs_persistence": 0.384162017434158,
+      "r2_vs_climatology": -0.08020411723439302,
+      "skill_vs_persistence": 0.384162017434158,
+      "beats_persistence": true,
+      "score_std": 0.0029942330438643694,
+      "selected_sources": [
+        10,
+        26,
+        46
+      ]
+    },
+    {
+      "place": 25,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.23865657693779396,
+      "persistence_mse": 0.4050726890563965,
+      "climatology_mse": 0.22331596910953522,
+      "r2_vs_persistence": 0.41083024507592303,
+      "r2_vs_climatology": -0.06869462980828867,
+      "skill_vs_persistence": 0.41083024507592303,
+      "beats_persistence": true,
+      "score_std": 0.0046465531922876835,
+      "selected_sources": [
+        10,
+        21,
+        40
+      ]
+    },
+    {
+      "place": 26,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.4015673356365618,
+      "persistence_mse": 0.5874856114387512,
+      "climatology_mse": 0.4375614523887634,
+      "r2_vs_persistence": 0.316464390245875,
+      "r2_vs_climatology": 0.08226071230840892,
+      "skill_vs_persistence": 0.316464390245875,
+      "beats_persistence": true,
+      "score_std": 0.007432243786752224,
+      "selected_sources": [
+        3,
+        40,
+        45
+      ]
+    },
+    {
+      "place": 27,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.37548539598799335,
+      "persistence_mse": 0.63542240858078,
+      "climatology_mse": 0.3764651417732239,
+      "r2_vs_persistence": 0.4090775035355735,
+      "r2_vs_climatology": 0.002602487392632802,
+      "skill_vs_persistence": 0.4090775035355735,
+      "beats_persistence": true,
+      "score_std": 0.007997473701834679,
+      "selected_sources": [
+        39,
+        44,
+        48
+      ]
+    },
+    {
+      "place": 28,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.44996769044586243,
+      "persistence_mse": 0.9466930627822876,
+      "climatology_mse": 0.4468061327934265,
+      "r2_vs_persistence": 0.5246952701613468,
+      "r2_vs_climatology": -0.007075904783736764,
+      "skill_vs_persistence": 0.5246952701613468,
+      "beats_persistence": true,
+      "score_std": 0.0031786602921783924,
+      "selected_sources": [
+        1,
+        38,
+        44
+      ]
+    },
+    {
+      "place": 29,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.4125511484973739,
+      "persistence_mse": 0.8059168457984924,
+      "climatology_mse": 0.4006793200969696,
+      "r2_vs_persistence": 0.4880971273300245,
+      "r2_vs_climatology": -0.02962925163577479,
+      "skill_vs_persistence": 0.4880971273300245,
+      "beats_persistence": true,
+      "score_std": 0.0018762658583000302,
+      "selected_sources": [
+        1,
+        6,
+        39
+      ]
+    },
+    {
+      "place": 30,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3399988424550539,
+      "persistence_mse": 0.45577409863471985,
+      "climatology_mse": 0.35281890630722046,
+      "r2_vs_persistence": 0.25401894606664344,
+      "r2_vs_climatology": 0.036336102241083856,
+      "skill_vs_persistence": 0.25401894606664344,
+      "beats_persistence": true,
+      "score_std": 0.0060597858391702175,
+      "selected_sources": [
+        20,
+        38,
+        39
+      ]
+    },
+    {
+      "place": 31,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.2160178852505533,
+      "persistence_mse": 0.3947593867778778,
+      "climatology_mse": 0.21602600812911987,
+      "r2_vs_persistence": 0.45278594382835613,
+      "r2_vs_climatology": 3.7601391781105775e-05,
+      "skill_vs_persistence": 0.45278594382835613,
+      "beats_persistence": true,
+      "score_std": 0.0020733787678182125,
+      "selected_sources": [
+        2,
+        15,
+        39
+      ]
+    },
+    {
+      "place": 32,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.20105120172526997,
+      "persistence_mse": 0.36498239636421204,
+      "climatology_mse": 0.1943701207637787,
+      "r2_vs_persistence": 0.4491482226867646,
+      "r2_vs_climatology": -0.03437298353902296,
+      "skill_vs_persistence": 0.4491482226867646,
+      "beats_persistence": true,
+      "score_std": 0.0031020110473036766,
+      "selected_sources": [
+        1,
+        7,
+        10
+      ]
+    },
+    {
+      "place": 33,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.2932359377663231,
+      "persistence_mse": 0.4961959421634674,
+      "climatology_mse": 0.27894699573516846,
+      "r2_vs_persistence": 0.4090319713462729,
+      "r2_vs_climatology": -0.05122457760656629,
+      "skill_vs_persistence": 0.4090319713462729,
+      "beats_persistence": true,
+      "score_std": 0.0023382597137242556,
+      "selected_sources": [
+        1,
+        34,
+        39
+      ]
+    },
+    {
+      "place": 34,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3599914520956035,
+      "persistence_mse": 0.5447165966033936,
+      "climatology_mse": 0.3466894030570984,
+      "r2_vs_persistence": 0.3391215646074537,
+      "r2_vs_climatology": -0.03836877885856338,
+      "skill_vs_persistence": 0.3391215646074537,
+      "beats_persistence": true,
+      "score_std": 0.004737961106002331,
+      "selected_sources": [
+        21,
+        26,
+        44
+      ]
+    },
+    {
+      "place": 35,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3174954568412597,
+      "persistence_mse": 0.5715194344520569,
+      "climatology_mse": 0.3078751564025879,
+      "r2_vs_persistence": 0.44447128531043245,
+      "r2_vs_climatology": -0.031247407394223048,
+      "skill_vs_persistence": 0.44447128531043245,
+      "beats_persistence": true,
+      "score_std": 0.002520553767681122,
+      "selected_sources": [
+        1,
+        7,
+        39
+      ]
+    },
+    {
+      "place": 36,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.20089461395276284,
+      "persistence_mse": 0.3320932686328888,
+      "climatology_mse": 0.19595232605934143,
+      "r2_vs_persistence": 0.39506568507162065,
+      "r2_vs_climatology": -0.025221889389180907,
+      "skill_vs_persistence": 0.39506568507162065,
+      "beats_persistence": true,
+      "score_std": 0.002553652273491025,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 37,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3485828133025678,
+      "persistence_mse": 0.5797998309135437,
+      "climatology_mse": 0.344478040933609,
+      "r2_vs_persistence": 0.39878765960774076,
+      "r2_vs_climatology": -0.011915918813965476,
+      "skill_vs_persistence": 0.39878765960774076,
+      "beats_persistence": true,
+      "score_std": 0.007268920540809631,
+      "selected_sources": [
+        1,
+        2,
+        26
+      ]
+    },
+    {
+      "place": 38,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.30519845214772406,
+      "persistence_mse": 0.5593505501747131,
+      "climatology_mse": 0.291413813829422,
+      "r2_vs_persistence": 0.4543699795192919,
+      "r2_vs_climatology": -0.047302624872720855,
+      "skill_vs_persistence": 0.4543699795192919,
+      "beats_persistence": true,
+      "score_std": 0.0030829578172415495,
+      "selected_sources": [
+        1,
+        10,
+        39
+      ]
+    },
+    {
+      "place": 39,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.4272439027343437,
+      "persistence_mse": 0.8228904008865356,
+      "climatology_mse": 0.4168268144130707,
+      "r2_vs_persistence": 0.4808009641696449,
+      "r2_vs_climatology": -0.024991406409257122,
+      "skill_vs_persistence": 0.4808009641696449,
+      "beats_persistence": true,
+      "score_std": 0.004227119032293558,
+      "selected_sources": [
+        1,
+        10,
+        44
+      ]
+    },
+    {
+      "place": 40,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.41455112473327416,
+      "persistence_mse": 0.6129433512687683,
+      "climatology_mse": 0.3794132471084595,
+      "r2_vs_persistence": 0.32367139006374757,
+      "r2_vs_climatology": -0.09261109856496419,
+      "skill_vs_persistence": 0.32367139006374757,
+      "beats_persistence": true,
+      "score_std": 0.0032527579460293055,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 41,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.26593270091813626,
+      "persistence_mse": 0.40791839361190796,
+      "climatology_mse": 0.2656484544277191,
+      "r2_vs_persistence": 0.3480737689628587,
+      "r2_vs_climatology": -0.0010700099536791186,
+      "skill_vs_persistence": 0.3480737689628587,
+      "beats_persistence": true,
+      "score_std": 0.003971661441028118,
+      "selected_sources": [
+        22,
+        29,
+        39
+      ]
+    },
+    {
+      "place": 42,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.29413197225782484,
+      "persistence_mse": 0.5319370627403259,
+      "climatology_mse": 0.2758080065250397,
+      "r2_vs_persistence": 0.4470549377729479,
+      "r2_vs_climatology": -0.06643739593948883,
+      "skill_vs_persistence": 0.4470549377729479,
+      "beats_persistence": true,
+      "score_std": 0.003090266138315201,
+      "selected_sources": [
+        10,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 43,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.1812522676330963,
+      "persistence_mse": 0.30566129088401794,
+      "climatology_mse": 0.17299871146678925,
+      "r2_vs_persistence": 0.40701595838685445,
+      "r2_vs_climatology": -0.04770877248927663,
+      "skill_vs_persistence": 0.40701595838685445,
+      "beats_persistence": true,
+      "score_std": 0.0028373943641781807,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 44,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.4035267230183977,
+      "persistence_mse": 0.6699541211128235,
+      "climatology_mse": 0.3857627511024475,
+      "r2_vs_persistence": 0.3976800644973689,
+      "r2_vs_climatology": -0.04604895590666458,
+      "skill_vs_persistence": 0.3976800644973689,
+      "beats_persistence": true,
+      "score_std": 0.0025520427152514458,
+      "selected_sources": [
+        10,
+        35,
+        39
+      ]
+    },
+    {
+      "place": 45,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.4320203147061709,
+      "persistence_mse": 0.6567779183387756,
+      "climatology_mse": 0.4311227798461914,
+      "r2_vs_persistence": 0.34221248515951397,
+      "r2_vs_climatology": -0.002081854408852335,
+      "skill_vs_persistence": 0.34221248515951397,
+      "beats_persistence": true,
+      "score_std": 0.005558662116527557,
+      "selected_sources": [
+        2,
+        39,
+        46
+      ]
+    },
+    {
+      "place": 46,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.469643222598591,
+      "persistence_mse": 0.7919289469718933,
+      "climatology_mse": 0.46525391936302185,
+      "r2_vs_persistence": 0.406962929699223,
+      "r2_vs_climatology": -0.009434210122460707,
+      "skill_vs_persistence": 0.406962929699223,
+      "beats_persistence": true,
+      "score_std": 0.0036116300616413355,
+      "selected_sources": [
+        1,
+        21,
+        44
+      ]
+    },
+    {
+      "place": 47,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.36484702058060214,
+      "persistence_mse": 0.5854653716087341,
+      "climatology_mse": 0.391265869140625,
+      "r2_vs_persistence": 0.3768256189463772,
+      "r2_vs_climatology": 0.0675214748939107,
+      "skill_vs_persistence": 0.3768256189463772,
+      "beats_persistence": true,
+      "score_std": 0.00894874520599842,
+      "selected_sources": [
+        1,
+        26,
+        39
+      ]
+    },
+    {
+      "place": 48,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.3899865422497168,
+      "persistence_mse": 0.6258487701416016,
+      "climatology_mse": 0.37626269459724426,
+      "r2_vs_persistence": 0.3768677660555596,
+      "r2_vs_climatology": -0.036474111968933576,
+      "skill_vs_persistence": 0.3768677660555596,
+      "beats_persistence": true,
+      "score_std": 0.003144277958199382,
+      "selected_sources": [
+        1,
+        39,
+        44
+      ]
+    },
+    {
+      "place": 49,
+      "n_candidate_sources": 50,
+      "expert_mse": 0.22075441449855443,
+      "persistence_mse": 0.37865155935287476,
+      "climatology_mse": 0.2222544103860855,
+      "r2_vs_persistence": 0.41699853322714586,
+      "r2_vs_climatology": 0.006749003922691066,
+      "skill_vs_persistence": 0.41699853322714586,
+      "beats_persistence": true,
+      "score_std": 0.002808781573548913,
+      "selected_sources": [
+        10,
+        26,
+        39
+      ]
+    }
+  ]
+}

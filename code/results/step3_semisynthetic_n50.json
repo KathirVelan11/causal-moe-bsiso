@@ -1,0 +1,26 @@
+{
+  "n_clusters": 50,
+  "n_samples_cap": 4000,
+  "epochs": 5,
+  "nonlinear": false,
+  "a": 41,
+  "b": 21,
+  "c": 13,
+  "r": 0.0204,
+  "full_graph": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "n_predicted": 51,
+    "n_true": 51,
+    "true_edge_mean_score": 0.4816335439682007,
+    "false_edge_mean_score": 0.48315224051475525
+  },
+  "node_a_only": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "n_predicted": 0,
+    "n_true": 2,
+    "true_edge_mean_score": 0.48331764340400696,
+    "false_edge_mean_score": 0.48254403471946716
+  }
+}

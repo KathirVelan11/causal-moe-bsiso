@@ -1,0 +1,21 @@
+{
+  "target": 22,
+  "variant": "direct",
+  "n_candidate_edges": 8,
+  "r": 0.375,
+  "n_samples": 200,
+  "epochs": 1,
+  "results_mse": {
+    "persistence": 0.027446994557976723,
+    "full_causal_splitter": 0.3201706955536763,
+    "plain_gnn_all_edges": 0.3279140398568973,
+    "random_subset": 0.34784610574908614
+  },
+  "skill_vs_persistence": {
+    "persistence": 0.0,
+    "full_causal_splitter": -10.665054797798522,
+    "plain_gnn_all_edges": -10.947174732163818,
+    "random_subset": -11.673376861511205
+  },
+  "note": "Published-method baselines (GC-MoE, GeoMoE/GraphMoRE, DyMoE) are external codebases per SS6/SS7 and are not run here; these are the plain-GNN and no-causal-selection ablations SS6 lists."
+}

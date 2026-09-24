@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from pathlib import Path
@@ -105,6 +106,8 @@ def main() -> None:
     parser.add_argument("--nonlinear", action="store_true", help="use the nonlinear (B*C interaction) injected rule variant instead of linear")
     parser.add_argument("--n-samples-cap", type=int, default=0, help="if >0, subsample this many rows (random, fixed seed) for a fast dry run before the full 16k-sample run")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--use-self-features", type=lambda s: s.lower() != "false", default=False,
+                         help="Bug 2 audit fix: default False, see PROJECT_PLAN.md")
     args = parser.parse_args()
 
     rng = np.random.default_rng(args.seed)
@@ -165,11 +168,23 @@ def main() -> None:
     gen_windows_t = gen_windows_t_full[keep_idx]
     features_bank = ds.features[keep_idx]  # numpy, for swap sampling
 
+    n_features = ds.features.shape[-1]
     model = DIRGNNSplitter(
-        in_channels=21, hidden_channels=16, r=r,
+        in_channels=n_features, hidden_channels=16, r=r,
         generator_window_len=args.generator_window, generator_in_channels=1,
+        use_self_features=args.use_self_features,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+
+    # Bug 3 (audit B3) fix: only node A's forecast is edge-dependent by
+    # construction (inject_causal_rule); every other cluster self-persists.
+    # Without this mask, risk averages over all n_clusters nodes, so at
+    # n_clusters=5 only 1/5 of the loss carries edge-dependent signal (4/5
+    # at n_clusters=15) -- diluting Var_swaps[risk] and producing the
+    # density "cliff" that was misdiagnosed as a VREx non-unique-optima
+    # pathology (see PROJECT_PLAN.md Bug 3).
+    target_node_mask = torch.zeros(n_clusters, dtype=torch.bool)
+    target_node_mask[a] = True
 
     total_steps = args.epochs * n_samples
     schedule = LambdaWarmupSchedule(lambda_max=1.0, total_steps=max(total_steps, 1))
@@ -196,6 +211,7 @@ def main() -> None:
                     x_generator_window=gen_windows_t[idx],
                     entropy_weight=args.entropy_weight,
                     prior_rate_weight=args.prior_rate_weight,
+                    target_node_mask=target_node_mask,
                 )
                 batch_loss = batch_loss + out.total_loss
                 batch_var += out.variance_risk.item()
@@ -235,7 +251,23 @@ def main() -> None:
         zip(edge_index[0].numpy()[top_idx].tolist(), edge_index[1].numpy()[top_idx].tolist())
     )
 
+    # B17 audit fix, 2026-09-23: precision/recall against the FULL
+    # true_edges set (node A's 2 real causal parents PLUS every other
+    # node's trivial self-loop) mismatches what target_node_mask actually
+    # trains for -- the loss only ever rewards getting NODE A's own
+    # prediction right, so the model has zero training pressure to score
+    # any other node's self-loop correctly. Scoring against all
+    # n_clusters "true" edges mechanically gets worse as n_clusters grows
+    # (more untrained self-loops dilute the metric), producing a fake
+    # "density cliff" independent of whether edge recovery for A itself
+    # is working. Fix: report BOTH the full-graph metric (kept for
+    # comparability with the OLD, pre-fix numbers) and a
+    # node-A-only metric (the one the training objective actually
+    # targets) -- the second is the one that should gate Phase 4.
     precision, recall = precision_recall(predicted_edges, true_edges)
+    true_edges_a_only = {(src, dst) for src, dst in true_edges if dst == a}
+    predicted_edges_a_only = {(src, dst) for src, dst in predicted_edges if dst == a}
+    precision_a, recall_a = precision_recall(predicted_edges_a_only, true_edges_a_only)
 
     # AUC-style separation diagnostic (true-edge vs false-edge mean score),
     # same convention as scripts/diagnose_edge_scores.py in step 2.
@@ -244,12 +276,55 @@ def main() -> None:
     true_scores = mean_scores[true_mask]
     false_scores = mean_scores[~true_mask]
 
-    print(f"\n=== result ===")
+    # Same AUC-style diagnostic, restricted to node A's own candidate
+    # edges only (dst == a) -- the fair comparison given target_node_mask
+    # (B17 fix, see precision_a/recall_a above).
+    a_dst_mask = (edge_index[1].numpy() == a)
+    true_mask_a = true_mask & a_dst_mask
+    false_mask_a = (~true_mask) & a_dst_mask
+    true_scores_a = mean_scores[true_mask_a]
+    false_scores_a = mean_scores[false_mask_a]
+
+    print(f"\n=== result (FULL graph, includes every node's self-loop -- "
+          f"kept for comparability with pre-B17-fix numbers) ===")
     print(f"precision={precision:.3f}  recall={recall:.3f}  "
           f"({len(predicted_edges)} predicted vs {len(true_edges)} true)")
     print(f"true-edge mean score={true_scores.mean():.4f}  false-edge mean score={false_scores.mean():.4f}")
-    print(f"predicted edges: {sorted(predicted_edges)}")
-    print(f"true edges:      {sorted(true_edges)}")
+
+    print(f"\n=== result (NODE A ONLY -- what target_node_mask actually "
+          f"trains for; this is the metric that should gate Phase 4) ===")
+    print(f"precision={precision_a:.3f}  recall={recall_a:.3f}  "
+          f"({len(predicted_edges_a_only)} predicted vs {len(true_edges_a_only)} true)")
+    if true_scores_a.size and false_scores_a.size:
+        print(f"true-edge mean score={true_scores_a.mean():.4f}  false-edge mean score={false_scores_a.mean():.4f}")
+    print(f"predicted edges (dst=A): {sorted(predicted_edges_a_only)}")
+    print(f"true edges (dst=A):      {sorted(true_edges_a_only)}")
+
+    report = {
+        "n_clusters": args.n_clusters,
+        "n_samples_cap": args.n_samples_cap,
+        "epochs": args.epochs,
+        "nonlinear": args.nonlinear,
+        "a": int(a), "b": int(b), "c": int(c),
+        "r": r,
+        "full_graph": {
+            "precision": precision, "recall": recall,
+            "n_predicted": len(predicted_edges), "n_true": len(true_edges),
+            "true_edge_mean_score": float(true_scores.mean()),
+            "false_edge_mean_score": float(false_scores.mean()),
+        },
+        "node_a_only": {
+            "precision": precision_a, "recall": recall_a,
+            "n_predicted": len(predicted_edges_a_only), "n_true": len(true_edges_a_only),
+            "true_edge_mean_score": float(true_scores_a.mean()) if true_scores_a.size else None,
+            "false_edge_mean_score": float(false_scores_a.mean()) if false_scores_a.size else None,
+        },
+    }
+    results_dir = Path(__file__).resolve().parents[1] / "results"
+    results_dir.mkdir(exist_ok=True)
+    out_path = results_dir / f"step3_semisynthetic_n{args.n_clusters}{'_nonlinear' if args.nonlinear else ''}.json"
+    out_path.write_text(json.dumps(report, indent=2))
+    print(f"\nwrote {out_path}")
 
 
 if __name__ == "__main__":

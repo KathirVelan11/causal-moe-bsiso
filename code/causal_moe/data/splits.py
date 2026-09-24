@@ -29,6 +29,19 @@ EL_NINO_1997_98 = (date(1997, 3, 1), date(1998, 7, 31))
 (~May/Jun 1998) so the pre-shift baseline and post-shift settling are both
 visible to the detector, not just the peak."""
 
+# B13 audit fix, 2026-09-23: `evaluate_detector`'s false-alarm ground truth
+# originally counted EVERY alarm outside the single 1997-98 window as a
+# false alarm. But 1982-83, 1991-92 and 2015-16 were also major NOAA-ONI El
+# Nino events (ONI >= +1.5 at peak, same tier as 1997-98), and the reported
+# "~1.8 false alarms/yr for OR" was largely counting real climate events as
+# detector errors. This is the full multi-event set; EL_NINO_1997_98 above
+# is kept for backward-compat callers (semantics unchanged) but new code
+# should use EL_NINO_EVENTS.
+EL_NINO_1982_83 = (date(1982, 3, 1), date(1983, 7, 31))
+EL_NINO_1991_92 = (date(1991, 3, 1), date(1992, 7, 31))
+EL_NINO_2015_16 = (date(2015, 3, 1), date(2016, 7, 31))
+EL_NINO_EVENTS = (EL_NINO_1982_83, EL_NINO_1991_92, EL_NINO_1997_98, EL_NINO_2015_16)
+
 # Arora et al. 2026 describes a slow multi-decade drift, not a single dated
 # window the way ONI gives El Nino a start/end. Use the last full decade of
 # the record as the "gradual shift" span -- long enough for a ~1deg/decade

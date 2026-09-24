@@ -75,9 +75,20 @@ ORIGINAL_PATCH_LON_SLICE = slice(33, 40)  # lon 82.5E..97.5E
 # Causal_MoE_Architecture.md §10 step 3 for the verification numbers.
 #   5  clusters -> 13x21 (lat 30N..0,     lon 70E..120E)  -- 273 cells
 #   15 clusters -> 18x37 (lat 30N..-15N,  lon 50E..140E)  -- 666 cells
+#   30 clusters -> 20x60 (verified 2026-09-24: smallest of {18x50, 20x60,
+#     22x70, 22x90, 25x70, 25x100, 25x144} that has a confound-free triple
+#     -- 18x50 FAILED (no clean triple in 200 attempts at max_other_corr=0.3),
+#     20x60 is the first one that passes) -- 1200 cells
+#   50 clusters -> 22x70 (verified 2026-09-24: smallest of {22x70, 22x90,
+#     25x70, 25x90, 25x100, 25x120, 25x144} that has a confound-free triple
+#     -- 22x70 already passes, no smaller size tried since 20x60 was
+#     already used at n=30 and adding clusters needs at least as much
+#     spatial extent) -- 1540 cells
 PATCH_SIZE_BY_N_CLUSTERS: dict[int, tuple[slice, slice]] = {
     5: (slice(0, 13), slice(28, 49)),
     15: (slice(0, 18), slice(20, 57)),
+    30: (slice(0, 20), slice(5, 65)),
+    50: (slice(0, 22), slice(0, 70)),
 }
 
 

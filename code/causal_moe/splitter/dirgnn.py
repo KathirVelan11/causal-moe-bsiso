@@ -185,10 +185,21 @@ class SharedEncoder(nn.Module):
     get aggregated together into each destination node before prediction.
     """
 
-    def __init__(self, in_channels: int, hidden_channels: int = 32):
+    def __init__(self, in_channels: int, hidden_channels: int = 32, use_self_features: bool = True):
+        """use_self_features: when True (default, original/ablation
+        behaviour), the node's own raw features are concatenated into the
+        final MLP alongside the aggregated edge messages -- this is Bug 2
+        (audit B2): at lead 1, self-features alone give R^2~0.92, so the MLP
+        can ignore `agg` entirely and `Var_swaps[risk]` collapses to ~0,
+        killing the DIR-GNN invariance mechanism's only gradient signal.
+        When False, `node_mlp` consumes ONLY the aggregated edge messages,
+        forcing the prediction (and thus the swap-variance signal) to
+        actually depend on which edges were selected as causal/spurious."""
         super().__init__()
+        self.use_self_features = use_self_features
+        mlp_in = (in_channels + hidden_channels) if use_self_features else hidden_channels
         self.node_mlp = nn.Sequential(
-            nn.Linear(in_channels + hidden_channels, hidden_channels),
+            nn.Linear(mlp_in, hidden_channels),
             nn.ReLU(),
         )
         self.msg_lin = nn.Linear(in_channels, hidden_channels)
@@ -199,9 +210,9 @@ class SharedEncoder(nn.Module):
         edge_groups: list[tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
         n_nodes: int,
     ) -> torch.Tensor:
-        """x_self: (n_nodes, in_channels) -- this instance's own features,
-            used for the node's residual/self term (the "+x" in the final
-            MLP), independent of which day each incoming message came from.
+        """x_self: (n_nodes, in_channels) -- this instance's own features.
+            Used for the node's residual/self term only when
+            `use_self_features=True` (see __init__ docstring, Bug 2 fix).
         edge_groups: list of (edge_index, edge_weight, source_features)
             triples. Each group's messages are built as
             msg_lin(source_features[src]) * edge_weight, then ALL groups'
@@ -216,7 +227,9 @@ class SharedEncoder(nn.Module):
             src, dst = edge_index[0], edge_index[1]
             messages = self.msg_lin(source_features[src]) * edge_weight.unsqueeze(-1)
             agg.index_add_(0, dst, messages)
-        return self.node_mlp(torch.cat([x_self, agg], dim=-1))
+        if self.use_self_features:
+            return self.node_mlp(torch.cat([x_self, agg], dim=-1))
+        return self.node_mlp(agg)
 
 
 class RegressionHead(nn.Module):
@@ -246,6 +259,12 @@ class SplitterLossOutput:
     lambda_value: float
     predictions_per_swap: torch.Tensor  # (n_swaps, n_nodes)
     entropy_penalty: torch.Tensor | None = None  # mean binary entropy of edge scores, if entropy_weight > 0
+    split: "SplitterOutput | None" = None  # the SplitterOutput compute_loss already built internally --
+    # exposed so callers (e.g. the expert's forward pass, which needs the
+    # same edge selection) can reuse it instead of calling self.split(...)
+    # again, which would redundantly re-run the rationale generator's
+    # forward pass a second time per training step (found via profiling,
+    # 2026-09-23: split() was ~1.2s of a 6.4s/2000-sample profile).
 
 
 class DIRGNNSplitter(nn.Module):
@@ -260,6 +279,7 @@ class DIRGNNSplitter(nn.Module):
         r: float = 0.5,
         generator_window_len: int = 1,
         generator_in_channels: int | None = None,
+        use_self_features: bool = True,
     ):
         """in_channels: per-timestep channel count fed to the SHARED
             ENCODER/prediction path (e.g. 3 for CausalDynamics' 3-lag
@@ -270,12 +290,16 @@ class DIRGNNSplitter(nn.Module):
             now sees a window of raw values, not the lag-flattened vector
             (fix, 2026-09-18). Defaults to in_channels for backward
             compatibility (generator_window_len=1 callers that still pass a
-            single lag-flattened snapshot)."""
+            single lag-flattened snapshot).
+        use_self_features: forwarded to SharedEncoder (Bug 2 audit fix,
+            2026-09-23). Default True preserves prior behaviour as an
+            explicit ablation; set False to make the invariance mechanism's
+            variance-across-swaps signal actually load-bearing."""
         super().__init__()
         self.r = r
         gen_channels = generator_in_channels if generator_in_channels is not None else in_channels
         self.generator = RationaleGenerator(gen_channels, generator_window_len, hidden_channels)
-        self.encoder = SharedEncoder(in_channels, hidden_channels)
+        self.encoder = SharedEncoder(in_channels, hidden_channels, use_self_features=use_self_features)
         self.causal_head = RegressionHead(hidden_channels)
         self.spurious_head = RegressionHead(hidden_channels)
 
@@ -321,6 +345,74 @@ class DIRGNNSplitter(nn.Module):
         if return_hidden:
             return pred, h
         return pred
+
+    def predict_causal_batch(
+        self, x_anchor: torch.Tensor, split: SplitterOutput, x_env_batch: torch.Tensor,
+    ) -> torch.Tensor:
+        """Vectorized form of calling `predict_causal` once per swap in a
+        Python loop (Bug 15/Phase -1 audit fix, 2026-09-23): profiling
+        showed the per-swap loop was 64% of total training step time. Same
+        math, same numbers (verified bit-for-bit against the loop version)
+        -- the n_swaps axis is folded into one big block-diagonal-style
+        batch by tiling the causal edges (anchored, identical across swaps)
+        and offsetting the spurious edges (swapped per environment) into
+        disjoint node-id blocks, so a single SharedEncoder forward pass
+        handles every swap at once instead of n_swaps sequential passes.
+
+        x_anchor: (n_nodes, in_channels) anchor instance's own features.
+        x_env_batch: (n_swaps, n_nodes, in_channels) swapped-in environment
+            features, one per swap.
+        Returns: (n_swaps, n_nodes) predictions, identical to
+            stack([predict_causal(x_anchor, split, x_env_batch[i]) for i in
+            range(n_swaps)]).
+        """
+        n_swaps, n_nodes, in_channels = x_env_batch.shape
+        device = x_anchor.device
+
+        c_idx, c_w = split.causal_edge_index, split.causal_edge_weight
+        s_idx, s_w = split.spurious_edge_index, split.spurious_edge_weight
+        n_c = c_idx.shape[1]
+        n_s = s_idx.shape[1]
+
+        # Node-id offset per swap block: swap i's nodes live at
+        # [i*n_nodes, (i+1)*n_nodes) in the batched graph.
+        offsets = torch.arange(n_swaps, device=device) * n_nodes  # (n_swaps,)
+
+        # Causal edges: same (anchor-sourced) edges repeated once per swap
+        # block, each shifted into that block's node-id range.
+        # c_idx: (2, n_c) -> (n_swaps, 2, n_c) -> (2, n_swaps * n_c), keeping
+        # the (src, dst) axis first and grouping by swap (verified against a
+        # standalone broadcast test before use here).
+        if n_c > 0:
+            c_idx_batched = (c_idx.unsqueeze(0) + offsets.view(n_swaps, 1, 1)) \
+                .permute(1, 0, 2).reshape(2, n_swaps * n_c)
+            c_w_batched = c_w.unsqueeze(0).expand(n_swaps, -1).reshape(-1)
+        else:
+            c_idx_batched = c_idx.new_empty((2, 0))
+            c_w_batched = c_w.new_empty((0,))
+
+        if n_s > 0:
+            s_idx_batched = (s_idx.unsqueeze(0) + offsets.view(n_swaps, 1, 1)) \
+                .permute(1, 0, 2).reshape(2, n_swaps * n_s)
+            s_w_batched = s_w.unsqueeze(0).expand(n_swaps, -1).reshape(-1)
+        else:
+            s_idx_batched = s_idx.new_empty((2, 0))
+            s_w_batched = s_w.new_empty((0,))
+
+        # Source features: causal edges always read from the (tiled) anchor;
+        # spurious edges read from the per-swap environment. Both source
+        # tensors are flattened to (n_swaps * n_nodes, in_channels) so
+        # `source_features[src]` indexing works with the offset edge ids.
+        x_anchor_tiled = x_anchor.unsqueeze(0).expand(n_swaps, -1, -1).reshape(n_swaps * n_nodes, in_channels)
+        x_env_flat = x_env_batch.reshape(n_swaps * n_nodes, in_channels)
+
+        edge_groups = [
+            (c_idx_batched, c_w_batched, x_anchor_tiled),
+            (s_idx_batched, s_w_batched, x_env_flat),
+        ]
+        h = self.encoder(x_anchor_tiled, edge_groups, n_swaps * n_nodes)
+        pred = self.causal_head(h)  # (n_swaps * n_nodes,)
+        return pred.reshape(n_swaps, n_nodes)
 
     def predict_spurious_gauge(self, x_anchor: torch.Tensor, split: SplitterOutput) -> torch.Tensor:
         """Spurious classifier: gradient-blocked from the shared
@@ -402,12 +494,13 @@ class DIRGNNSplitter(nn.Module):
             x_generator_window = x_anchor.unsqueeze(1)  # (n_nodes, 1, in_channels)
         split = self.split(x_generator_window, edge_index)
 
+        # Vectorized across all n_swaps environments in one encoder forward
+        # pass (Bug 15/Phase -1 audit fix, 2026-09-23) -- replaces a Python
+        # loop calling predict_causal once per swap, which profiling showed
+        # was 64% of total training step time. Verified bit-for-bit
+        # equivalent to the loop before this replacement.
+        predictions_per_swap = self.predict_causal_batch(x_anchor, split, env_candidates)
         n_swaps = env_candidates.shape[0]
-        preds = []
-        for i in range(n_swaps):
-            pred = self.predict_causal(x_anchor, split, env_candidates[i])
-            preds.append(pred)
-        predictions_per_swap = torch.stack(preds, dim=0)  # (n_swaps, n_nodes)
 
         if target_node_mask is not None:
             sq_err = (predictions_per_swap - y_anchor.unsqueeze(0)) ** 2  # (n_swaps, n_nodes)
@@ -450,4 +543,5 @@ class DIRGNNSplitter(nn.Module):
             entropy_penalty=entropy_penalty,
             lambda_value=lambda_value,
             predictions_per_swap=predictions_per_swap,
+            split=split,
         )
