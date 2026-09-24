@@ -33,18 +33,22 @@ post-bugfix, drift/lifecycle re-run at 3 places, and figures generated.
 See `results/phase9_figures/` for the visual versions of the numbers
 below.
 
-**One open scope question, flagged 2026-09-24, not yet resolved (B23):**
+**A scope question, flagged AND empirically settled 2026-09-24 (B23):**
 this project trains and evaluates on the full 12-month record, but
 BSISO is by definition a boreal-summer (May-Oct) phenomenon — outside
 that window the dominant tropical intraseasonal mode is the MJO, with
-different dynamics. Every number below is therefore an average over
-two different physical regimes, not a clean BSISO-only result. The
-seasonal difference is real but modest where checked (place 22/lead-7:
-persistence R² vs climatology -0.656 JJASO vs -0.607 other-season).
-Not fixed — this is a scope call for whoever owns the writeup: either
-add a season filter and re-run, or soften the framing to "tropical
-intraseasonal variability" rather than "BSISO" specifically. See B23 in
-`../PROJECT_PLAN.md` for the full analysis.
+different dynamics. To check whether this mattered, place 22/lead-7
+was re-run restricted to May-Oct only (`results/ablation_jjaso_place22.json`)
+and compared against the year-round result: R² vs climatology and
+discrimination std moved both up and down across the 3 variants by
+amounts consistent with simply having half the data, with no
+consistent "JJASO-only is better/worse" pattern. **Conclusion:
+year-round training is not masking a materially stronger BSISO-only
+signal — kept as year-round training**, with claims in any future
+writeup softened from "BSISO causal graph" to "tropical intraseasonal
+variability" for numbers (like these) that were never computed
+season-exclusively. See B23 in `../PROJECT_PLAN.md` for the full
+before/after table.
 
 ### Headline numbers
 
