@@ -74,6 +74,14 @@ def load_cache(path: Path = CACHE_PATH):
         "edge_index": d["edge_index"],  # (2, n_edges) real lattice adjacency
         "n_clusters": int(d["n_clusters"]),
         "lags_days": lags_days,
+        # B22 audit fix: needed by chronological_split's lead_time_days
+        # param (closes the split-boundary leak) -- was missing from this
+        # dict entirely until this fix, even though the raw .npz always
+        # has it; every caller that reads cache["lead_time_days"] after
+        # B22 landed was silently broken (KeyError) until this line.
+        # Legacy caches built before lead_time_days was recorded default
+        # to 1 (the original single-lead cache's implicit value).
+        "lead_time_days": int(d["lead_time_days"]) if "lead_time_days" in d else 1,
         # olr lag-0 (today) absolute channel index within a place's feature
         # row -- computed from the cache's OWN lag set (B16-style coupling
         # avoided: this cache may be the legacy 21-feature/3-lag cache or
