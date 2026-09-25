@@ -95,7 +95,7 @@ def fig_variant_comparison():
     ax2.set_xticks(x)
     ax2.set_xticklabels(variants)
     ax2.set_ylabel("Places clearing discrimination gate (std>=0.02) / 50")
-    ax2.set_title("Discrimination: collapses as pool grows (B18)")
+    ax2.set_title("Discrimination: collapses as pool grows")
     ax2.set_ylim(0, 50)
     for i, g in enumerate(gate_pass):
         ax2.text(i, g + 1, f"{g}/50", ha="center")
@@ -143,8 +143,8 @@ def fig_lead1_vs_lead7():
         ax.set_title(f"{title}\n{beat}/50 beat persistence, mean skill={d['skill_mean']:+.3f}")
         ax.set_xlabel("Place (sorted)")
     axes[0].set_ylabel("Skill vs persistence")
-    fig.suptitle("Bug 1's own prediction, confirmed mesh-wide: persistence is a much\n"
-                 "harder baseline at lead-1 than lead-7 (though both beat climatology)",
+    fig.suptitle("Persistence is a much harder baseline at lead-1 than lead-7\n"
+                 "(though both beat climatology)",
                  fontsize=11, y=1.06)
     fig.tight_layout()
     fig.savefig(OUT / "04_lead1_vs_lead7.png", bbox_inches="tight")
