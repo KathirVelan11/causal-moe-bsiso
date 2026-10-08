@@ -20,3 +20,7 @@ Thumbs.db
 # distilled into results/*.json and PROJECT_PLAN.md's Progress Log.
 code/*.log
 code/*.err.log
+
+# Local-only internal notes -- everything in here has been merged into
+# the top-level README.md, which is the single source of truth on GitHub.
+code/README.md
