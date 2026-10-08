@@ -49,9 +49,11 @@ regions it has to consider grows larger.
 **None of this was true when the project started.** The first working
 version of this pipeline produced a causal-discovery mechanism that was,
 when properly checked, statistically indistinguishable from picking
-edges at random. §4 tells that story in full — what was wrong, how we
-found out, and how we fixed it — because that debugging process is
-itself a real part of what this project did, not just a footnote.
+edges at random. A systematic audit found 23 bugs, three of which were
+the actual root cause; fixing them is what turned the numbers in this
+document from misleading into honest. That debugging process is a real
+part of what this project did, not just a footnote — the full story is
+kept in a local, non-public project log alongside this README.
 
 ---
 
@@ -66,7 +68,7 @@ project's own contribution.
 | Method | What it does | What we took from it | What we changed |
 |---|---|---|---|
 | **DIR-GNN** (Wu et al., ICLR 2022) | Splits a graph into a "causal" part and a "non-causal" part, swaps the non-causal part with a different example's non-causal part, and trains so predictions stay stable across those swaps — low sensitivity to the swap is the signal that the causal part is genuinely driving the outcome, not just correlated with it. Built for one-off graph classification (e.g. "is this molecule toxic?"). | The entire splitter mechanism — the swap-based training signal, the two-classifier setup, the loss shape. | Adapted it from a single-snapshot classification setting to a spatiotemporal forecasting setting: one "example" is now a single region on a single day, and the "swap" draws from a *different day's* data for that same region, not a different graph entirely. Classification loss replaced with a forecasting (regression) loss. |
-| **DyMoE** (Kong et al., 2025) | Spawns a brand-new expert model whenever a new batch of data arrives, uses a regularization loss so older experts don't catastrophically forget, and routes each prediction to only the most relevant few experts. | The idea of a growing pool of experts over time, and routing predictions to only the most relevant ones. | DyMoE spawns on a **fixed schedule** — whenever new data shows up, whether or not anything has actually changed. We only retrain, spawn, or swap in a different expert when a **measured drift signal** says the underlying relationships have actually shifted (§12 of this document). We also add the ability to archive and later *reactivate* an old expert — DyMoE's pool only ever grows, ours can bring back something that's recurred before. |
+| **DyMoE** (Kong et al., 2025) | Spawns a brand-new expert model whenever a new batch of data arrives, uses a regularization loss so older experts don't catastrophically forget, and routes each prediction to only the most relevant few experts. | The idea of a growing pool of experts over time, and routing predictions to only the most relevant ones. | DyMoE spawns on a **fixed schedule** — whenever new data shows up, whether or not anything has actually changed. We only retrain, spawn, or swap in a different expert when a **measured drift signal** says the underlying relationships have actually shifted (§11 of this document). We also add the ability to archive and later *reactivate* an old expert — DyMoE's pool only ever grows, ours can bring back something that's recurred before. |
 | **GeoMoE** (Cao et al., 2026) | Routes each node to one of several experts based on the graph's local curvature. | Background reading only — not used directly in this project. | Not applicable here: curvature-based routing has no notion of *why* a region's predictions are drifting, only a static topological property. We route and trigger changes based on a causal-relevance signal instead. |
 | **GC-MoE** (Ghaffari et al., 2026) | A router blends several frozen, pre-trained experts per node based on topology and recent input. | Background reading only — not used directly in this project. | Experts in GC-MoE are frozen forever and never retrain or spawn — it has no mechanism for responding to drift at all, which is the exact gap this project's lifecycle (retrain / spawn / hibernate / reactivate) is built to close. |
 
@@ -87,7 +89,7 @@ against this project's own results. GC-MoE has real public code
 GeoMoE has no public code (a substitute, GraphMoRE, exists with the same
 curvature-routing idea); DyMoE has no code either, only a loss formula in
 its paper. Implementing and running any of them wasn't completed — see
-§14 for exactly what *was* benchmarked.
+§13 for exactly what *was* benchmarked.
 
 ---
 
@@ -158,7 +160,7 @@ summer (roughly May–October). This project trains and evaluates using
 the full 12-month record rather than restricting to that season. We
 tested directly whether this mattered — retraining one region using only
 May–October data and comparing against the year-round result — and found
-no meaningful difference either way (full detail in §4.6). So "BSISO"
+no meaningful difference either way. So "BSISO"
 throughout this document should be read as shorthand for "the kind of
 tropical intraseasonal weather variability this dataset captures across
 the whole year," not a claim that training was restricted to the BSISO
@@ -166,198 +168,7 @@ season specifically.
 
 ---
 
-## 4. The debugging story: from broken to honest
-
-This section exists because the numbers in §9–§12 would be misleading
-without it. The first working version of this pipeline looked like it
-worked; a proper audit showed it didn't, for specific, fixable reasons.
-Understanding what was wrong is part of understanding what the final
-results actually mean.
-
-### 4.1 How we discovered something was wrong
-
-Early on, we had a working pipeline that appeared to show the causal
-splitter (§7) successfully telling real relationships apart from noise.
-But a closer audit of the evaluation code turned up a problem: the
-numbers were being measured **in-sample** — the model was being scored on
-the same data it had just been trained on, rather than on held-out data
-it had never seen. In-sample scores are close to meaningless for judging
-whether a model has learned something real versus simply memorized the
-training set, so none of the early results could actually be trusted.
-
-Once we went looking for that kind of problem, we found more. A
-systematic audit of the whole codebase turned up **23 separate bugs**,
-three of which were serious enough to be the actual root cause of the
-original "looks like random edge selection" result — at that point, the
-splitter's selected set of edges scored about the same as a random
-3-of-8 subset of candidates (mean-squared error 0.02406 vs. 0.02410),
-and both were beaten by just using every candidate edge with no
-selection at all (0.02328). The rest ranged from real but smaller
-correctness problems to performance issues (one fix alone made a
-training loop roughly 10x faster by replacing a per-sample Python loop
-with a vectorized operation).
-
-### 4.2 The three bugs that mattered most
-
-**Bug 1 — the model could see the answer before it had to guess.**
-Both the causal splitter and the forecaster had a shortcut wired in: they
-could look directly at the target region's own recent values, including
-at very short forecast horizons where "tomorrow's weather is almost
-exactly like today's weather" is true. With that shortcut available, the
-model had essentially no incentive to actually use the causal edges it
-was supposed to be selecting — it could get a good score by ignoring the
-whole causal-discovery mechanism and just reading off the answer from
-the shortcut. We removed the shortcut (it's now opt-in,
-`use_self_features` / `self_bypass`, both default `False`), which forced
-the gradient that trains the causal splitter to actually flow through
-the edge-selection mechanism, where previously it had collapsed to
-roughly zero.
-
-**Bug 2 — results were measured on data the model had already seen.**
-As described above: no training/validation/test split existed anywhere
-in the pipeline. We added a proper chronological split (train on data
-before 2005, validate on 2005–2012, test only on 2013 onward — see
-`code/causal_moe/data/splits.py`) and wired it into every training and
-evaluation entry point in the codebase, so every number reported from
-this point on is genuinely out-of-sample.
-
-**Bug 3 — the synthetic ground-truth test was silently broken.** One of
-our three checks on whether the causal splitter works at all (§8.1) is a
-synthetic test: we build fake data with a causal rule we wrote ourselves,
-so we know the correct answer, and check whether the splitter finds it.
-This test is supposed to focus its scoring on one specific node, using a
-mechanism called `target_node_mask` — but two of the three scripts
-implementing this test never actually applied that mask, and even in the
-one that did, the precision/recall metric itself was still being scored
-against every node's untrained self-loop instead of just the node that
-was actually trained on. The practical effect: the test got mechanically
-*worse* as the problem got bigger, regardless of whether the splitter
-was doing anything right or wrong — producing a misleading "performance
-collapses with scale" result that was really just a scoring bug. Once
-fixed, a 5-cluster re-run scored precision 1.0 / recall 0.5 on the node
-that matters (found 1 of its 2 true causal parents, zero false
-positives) — genuine discrimination, not noise. The corrected,
-larger-scale version of this test is discussed in §9.
-
-### 4.3 What this means for anything written about this project before the fix
-
-Any earlier claim along the lines of "the causal splitter doesn't work"
-or "it's no better than random" was a real finding **given the bugs that
-existed at the time** — but it was a finding about those bugs, not about
-whether this general approach (VREx-style invariant learning applied to
-a graph) can work at all. Once the three bugs above were fixed, the same
-underlying mechanism, on the same real data, produced genuinely
-discriminating edge scores (see §9). Anyone reading older notes, slides,
-or drafts from this project should treat their conclusions as superseded
-by this document.
-
-### 4.4 Everything else that was fixed in the same pass
-
-Beyond the three bugs above, the same audit pass found and fixed 20 more
-issues, including:
-
-- A missing Mixture-of-Experts pool/router (§12.3 — this didn't exist
-  yet).
-- A missing "forgetting" metric (how much worse the system gets at a
-  weather regime it has seen before, the second time that regime
-  recurs) — needed to properly evaluate the lifecycle/drift system.
-- The independent causal cross-check (a second, separately-built
-  algorithm called PCMCI, used as a sanity check on the splitter's
-  picks) was comparing results in a way that was mathematically
-  guaranteed to show "agreement" almost no matter what the splitter
-  did — making it a vacuous check rather than a real one.
-- The "lifecycle" simulation (which retrains, archives, or swaps in
-  experts as conditions change) had a loop that was supposed to
-  actually train each generation of expert, but didn't.
-- Wrong ground-truth labels for the drift detector's false-alarm test —
-  it didn't account for all the real El Niño events in the test window.
-- Cluster assignment (§5, grouping 3,600 grid cells into 50 regions) was
-  being fit using information from outside the training window, a form
-  of data leakage.
-- A boundary-condition bug in the Rodionov statistical test used for
-  detecting regime shifts.
-- A small chronological-split boundary leak, described in §4.5 below.
-
-Every one of these is a genuine, separately-verified fix — not a
-rewording or a reinterpretation of an existing result. The full list,
-with evidence and before/after numbers for all 23, lives in
-`../PROJECT_PLAN.md`.
-
-### 4.5 A smaller leak found later
-
-After the main fixes above, a closer look at the train/validation/test
-split logic found one more, much smaller issue. Each training example is
-labeled with "today's date," but its target value is actually from some
-number of days *after* today (that's the forecast horizon). With a plain
-date cutoff and no gap at the split boundary, a training example very
-close to the validation period's start could have a target value that
-actually falls inside the validation window — meaning the model would,
-in a small number of cases, be trained on a value it was nominally
-supposed to be evaluated against later.
-
-We measured the actual impact directly: 14 of 12,409 training-pool
-examples (0.11%) were affected, and zero test-set examples were
-affected. Most of the training runs behind the headline numbers also use
-a capped, contiguous slice of the training data that doesn't reach the
-boundary at all, so this bug was already inactive for most of the
-results in this document — but it was live for any run using the full,
-uncapped training pool. We fixed the split function to open a small gap
-at each boundary (sized to the forecast horizon) and drop the small
-number of affected rows, rather than silently mislabeling them. Given
-how small the effect was, we verified it wouldn't move any existing
-headline number outside of its own normal run-to-run noise, rather than
-re-running the entire experiment sweep from scratch.
-
-### 4.6 A scope question: BSISO vs. the whole year
-
-As flagged in §3.4: this project trains and evaluates using the full
-12-month record, not just BSISO's May–October window. We tested this
-directly rather than leaving it as an open question: region 22 was
-re-run with training and evaluation restricted to May–October only, and
-the result (`code/results/ablation_jjaso_place22.json`) was compared
-against the same region's year-round numbers. Both the
-forecast-skill-vs-climatology score and the edge-discrimination quality
-moved up and down across the three candidate-pool variants by amounts
-consistent with simply having half as much data to work with — there was
-no consistent pattern of "season-restricted is better" or
-"season-restricted is worse."
-
-**Conclusion: year-round training is not hiding a materially stronger
-BSISO-specific signal**, so we kept year-round training as the standard
-setup. The honest caveat going forward is wording: numbers computed on
-the full year (which is everything in this document) should be
-described as "tropical intraseasonal variability," not specifically
-"BSISO," since they were never computed on a BSISO-exclusive season.
-
-### 4.7 A reporting gap found during a later re-check
-
-While double-checking the headline numbers in §10, we noticed that one
-comparison had been silently left out of our own reporting: at the
-7-day forecast horizon, the model's R² against a **climatology**
-baseline (simply predicting the long-term average value every day,
-ignoring today's conditions) is *negative on average*, across all three
-candidate-pool variants. This had never actually been checked before —
-only skill-vs-persistence and the discrimination-quality score had been
-compared when we re-ran the sweep with a longer training budget.
-
-This is not a bug or a regression — we traced it directly to the numbers
-in the results files and it checks out mechanically: at a 7-day horizon,
-OLR has very little short-range structure left to exploit relative to
-its own day-to-day variance, so a constant "always predict the
-training-period average" baseline (climatology, MSE ≈ 0.329 at lead-7)
-becomes a genuinely strong competitor, almost tied with the model's own
-expert MSE (0.321–0.326 across the three pool variants). Persistence
-(predicting "tomorrow = today," MSE ≈ 0.561 at lead-7), on the other
-hand, is much easier to beat at 7 days out, because weather is no longer
-well-approximated by "unchanged from today" at that range. The model
-clearly wins against persistence at 7 days; the contest against
-climatology at that same horizon is close, and slightly unfavorable on
-average. Both comparisons are reported honestly in §10 below —
-previously, only the flattering one was being shown.
-
----
-
-## 5. Step 1: From 3,600 grid cells to 50 regions
+## 4. Step 1: From 3,600 grid cells to 50 regions
 
 Running a model over 3,600 individual grid cells directly is both
 computationally impractical and not very meaningful — a single 2.5°×2.5°
@@ -395,7 +206,7 @@ crossroads of several monsoon circulation patterns.
 
 **One deliberate design choice worth understanding:** *how the 50 regions
 were formed* (grouping by OLR correlation) and *which regions are allowed
-to be "candidate causes" of which other regions* (§8 below) use two
+to be "candidate causes" of which other regions* (§6 below) use two
 different, independent rules. The second rule is pure geography — "is
 this region physically touching that region on the map" — with no
 correlation involved at all. Keeping these two steps independent guards
@@ -411,7 +222,7 @@ near-duplicates of each other.
 
 ---
 
-## 6. Step 2: What each region "knows" about itself
+## 5. Step 2: What each region "knows" about itself
 
 For every region, on every day, the model is given a feature vector — a
 list of numbers describing that region's recent state.
@@ -449,7 +260,7 @@ select.
 
 ---
 
-## 7. Step 3: Which regions are even allowed to be candidates?
+## 6. Step 3: Which regions are even allowed to be candidates?
 
 Before the model tries to find causal drivers, it needs a **candidate
 pool** — a list of "other regions that are even allowed to be considered
@@ -480,12 +291,12 @@ real, and it's a discrimination-quality cost, not an accuracy cost.)
 
 ---
 
-## 8. Step 4: The causal splitter — how it decides what's real
+## 7. Step 4: The causal splitter — how it decides what's real
 
 This is the core mechanism, and the part with no simple ground-truth
 answer to check against.
 
-### 8.1 Why there's no simple ground truth
+### 7.1 Why there's no simple ground truth
 
 For a normal machine learning task, you'd have labeled examples: "this
 photo is a cat" — a fact a human confirmed. For real climate data, nobody
@@ -505,9 +316,9 @@ individually weaker, ways:**
    data. If it tends to agree with our model on which sources matter,
    that's supporting evidence — two different guessing methods agreeing
    is more reassuring than one method agreeing with itself, but it's
-   still not proof. (Status: this check was fixed to be meaningful — see
-   §4.4 — but hasn't yet been re-run against the fully-fixed splitter;
-   see §14.)
+   still not proof. (Status: this check was fixed so its agreement score
+   is actually meaningful, but hasn't yet been re-run against the
+   fully-fixed splitter; see §13.)
 3. **On fabricated data where we know the true answer, does the splitter
    find it?** A synthetic test: we build fake data where *we* inject a
    known rule — for example, "region A's future value = 0.6 × region B's
@@ -519,7 +330,7 @@ individually weaker, ways:**
    work in principle," not "did it find the real atmosphere's actual
    causal graph."
 
-### 8.2 The actual mechanism: scoring and swapping
+### 7.2 The actual mechanism: scoring and swapping
 
 For a target region, the splitter's "Rationale Generator" scores every
 candidate edge for how causally relevant it looks. The top-scoring
@@ -584,8 +395,10 @@ correlated one typically won't.
 (self-persistence) is treated as just another candidate edge — it can be
 *selected* by the splitter like any other source, but it is not
 automatically force-fed into the forecast regardless of what gets
-selected (this is the opt-in shortcut described in §4.2, Bug 1 — kept
-off by default). This matters because self-persistence alone is an
+selected (this self-persistence shortcut is opt-in, kept off by
+default — an early version of the pipeline force-fed it unconditionally,
+which was one of the root causes of the splitter looking broken before
+it was fixed). This matters because self-persistence alone is an
 extremely strong predictor at short lags (a region's OLR today is a very
 good guess at OLR tomorrow) — if it were force-fed unconditionally, the
 model could get a good forecast while completely ignoring whatever the
@@ -616,7 +429,7 @@ settings to the plain splitter:
 
 Both alternatives were built to solve a problem — scores that don't
 discriminate — that turned out to be caused by the self-answer shortcut
-bug (§4.2, Bug 1), not a fundamental limitation of the underlying
+bug described above, not a fundamental limitation of the underlying
 approach. Once that bug was fixed, the plain, unmodified splitter beat
 both alternatives on both forecast accuracy and discrimination quality.
 Kept in the codebase as tested, working, honestly-reported negative
@@ -624,7 +437,7 @@ results — not deleted, and not recommended for use.
 
 ---
 
-## 9. Step 5: The forecaster (the "expert")
+## 8. Step 5: The forecaster (the "expert")
 
 Once the splitter has picked a causal set `c̃` for a region, a separate,
 smaller model — called `PlaceExpert` — takes those selected source
@@ -654,7 +467,7 @@ how causal edges are found, and vice versa.
 
 ---
 
-## 10. Results — candidate-pool size and causal-discrimination quality
+## 9. Results — candidate-pool size and causal-discrimination quality
 
 This is one of the most important, and most nuanced, findings in the
 project: **forecast accuracy and "trustworthy causal discovery" are two
@@ -690,10 +503,10 @@ consistent pool (like `direct`'s handful of physical neighbours, the same
 shape every time) is a much easier discrimination task than a pool of 50
 similar-looking competing hypotheses all at once. It's a capacity
 problem, not a training-time problem — training longer helps somewhat
-(§11.2 below), but doesn't fully close the gap once the pool is large.
+(§10.2 below), but doesn't fully close the gap once the pool is large.
 
 We confirmed this isn't just a real-data artifact by reproducing it on
-the synthetic ground-truth test (§4.2, Bug 3 — now fixed): with a large
+the synthetic ground-truth test (once a scoring bug in it was fixed): with a large
 synthetic candidate pool, the splitter's precision and recall for
 finding the true causal parents we'd injected into the fake data dropped
 sharply. Restricting the candidate pool down to a smaller, focused set
@@ -723,7 +536,7 @@ start. The capping capability is kept in the codebase
 in via `train_step4_single_place.py --max-candidates`, zero effect
 unless explicitly turned on) for whoever picks up this question next.
 This remains the clearest concretely-defined open problem in the project
-— see §14.
+— see §13.
 
 **Practical consequence for anyone using this project's output:** if you
 want to make a claim like "region X causally drives region Y," only
@@ -733,7 +546,7 @@ be treated as accuracy-only results, not reliable causal claims.
 
 ---
 
-## 11. Results — forecast accuracy across all 50 regions
+## 10. Results — forecast accuracy across all 50 regions
 
 ![Lead-7 skill vs persistence, all 50 places, sorted, all beating persistence with mean skill +0.401](code/results/phase9_figures/01_skill_per_place_lead7.png)
 
@@ -743,7 +556,7 @@ ranging from +0.22 to +0.55 (mean +0.40) — meaning the model's prediction
 error is, on average, about 40% lower than just guessing that nothing
 changes from today.
 
-### 11.1 Why the forecast horizon (lead time) matters so much
+### 10.1 Why the forecast horizon (lead time) matters so much
 
 ![Lead-1: 0/50 beat persistence, mean skill -1.622. Lead-7: 50/50 beat persistence, mean skill +0.401](code/results/phase9_figures/04_lead1_vs_lead7.png)
 
@@ -759,7 +572,7 @@ than the (very strong, at this specific horizon) naive baseline.
 
 Edge discrimination is actually *better* at 1 day than at 7 days: 37 of
 50 regions (74%) produce genuinely informative edge scores, vs. 27 of 50
-at the 7-day horizon (§10). Forecast accuracy and discrimination quality
+at the 7-day horizon (§9). Forecast accuracy and discrimination quality
 are measuring two different things and don't move together — this is the
 clearest single piece of evidence for that in the whole project. (Source:
 `code/results/step7_all_places_direct_lead1.json`.)
@@ -776,22 +589,22 @@ clearly beats climatology (mean R² = +0.73) even though it can't beat the
 much harder persistence baseline there. At the 7-day horizon, the picture
 is more mixed against climatology specifically — mean R² vs. climatology
 is actually *negative* on average for all three candidate-pool variants
-(−0.014 to −0.023; see §10's table) — while the model still cleanly
+(−0.014 to −0.023; see §9's table) — while the model still cleanly
 beats persistence. This is not a bug; it reflects how little short-range
 structure OLR has left to exploit at 7 days relative to its own
 day-to-day variance, which makes a constant climatology prediction a
-genuinely strong competitor at that horizon (full mechanism in §4.7).
+genuinely strong competitor at that horizon.
 **These are genuinely two different comparisons, and both should be
 reported together, not just the flattering one:** "beats persistence" is
 true and solidly established at 7 days; "beats climatology" is a
 separate, much closer — and on average slightly losing — contest at that
 same horizon.
 
-### 11.2 Training budget matters too
+### 10.2 Training budget matters too
 
 ![epochs=2 vs epochs=5 histogram, discrimination gate pass rate 5/50 vs 27/50](code/results/phase9_figures/03_score_std_histogram_epochs2_vs_5.png)
 
-The discrimination-quality numbers above (§10) were measured after
+The discrimination-quality numbers above (§9) were measured after
 training each region for 5 epochs. Training for only 2 epochs — half the
 budget — cuts the number of regions clearing the discrimination-quality
 bar roughly in half (from 27/50 down to 5/50), while forecast accuracy
@@ -802,7 +615,7 @@ like a broken mechanism when it's really just undertrained.
 
 ---
 
-## 12. Step 6: Adapting when the physics changes (Mixture-of-Experts)
+## 11. Step 6: Adapting when the physics changes (Mixture-of-Experts)
 
 Weather regimes shift over time. A relationship that held for years can
 break down (an El Niño year behaves differently from a normal year), and
@@ -811,7 +624,7 @@ the moments it matters most. This project addresses that with a
 per-region model *lineage*, plus a way to detect when the lineage needs
 to change.
 
-### 12.1 Detecting that something has changed
+### 11.1 Detecting that something has changed
 
 Two independent "channels" watch for drift, and their signals are
 combined:
@@ -883,7 +696,7 @@ error-based signal did (117 days vs. 1,158 days). (Source:
 `code/results/step5_drift_place12_direct.json`,
 `step5_drift_place29_direct.json`.)
 
-### 12.2 Archiving old experts and bringing them back
+### 11.2 Archiving old experts and bringing them back
 
 Instead of deleting an old expert the moment a new one is needed, retired
 experts are archived. Since weather regimes recur (seasons, El Niño/La
@@ -898,7 +711,7 @@ Region A:  Expert A-1 --[drift]--> Expert A-2 --[drift]--> Expert A-3 (ACTIVE)
              Archive A  <---- searched on every future drift event
 ```
 
-### 12.3 Single best match vs. blending several — a real, tested comparison
+### 11.3 Single best match vs. blending several — a real, tested comparison
 
 When a drift event fires and the system needs to bring in a replacement
 expert, there are two ways to use the archive:
@@ -953,7 +766,7 @@ better-supported claim is just "the k=3 pool blend helps."
 
 ---
 
-## 13. Putting it all together — the full pipeline
+## 12. Putting it all together — the full pipeline
 
 ```
 raw grid (3,600 cells)
@@ -980,21 +793,21 @@ raw grid (3,600 cells)
 
 ---
 
-## 14. Current limitations, stated plainly
+## 13. Current limitations, stated plainly
 
 - **Causal-discrimination reliability depends heavily on candidate-pool
-  size** (§10) — trustworthy for `direct`, not for `2hop`/`full`. One
-  direct fix attempt (capping the pool by correlation) didn't work (§10)
+  size** (§9) — trustworthy for `direct`, not for `2hop`/`full`. One
+  direct fix attempt (capping the pool by correlation) didn't work (§9)
   — this is the clearest, most concrete next step for anyone continuing
   this project.
 - **No independently verified ground truth exists for real climate
-  causal relationships** (§8.1) — every causal claim in this project
+  causal relationships** (§7.1) — every causal claim in this project
   rests on the three indirect checks described there, not on a known
   correct answer.
 - **Direct comparison against other published Mixture-of-Experts methods
   from the wider research literature has not been done.** The
   comparisons in this document are all internal (persistence, plain-GNN,
-  random-subset, CIA, GSINA — see §8.2 and the `simple.py` baselines
+  random-subset, CIA, GSINA — see §7.2 and the `simple.py` baselines
   below). See §2 for which published methods this project is
   conceptually built on vs. actually benchmarked against.
 - **Published baseline methods referenced in early planning (GC-MoE,
@@ -1007,14 +820,14 @@ raw grid (3,600 cells)
   fixed-size edge subset.
 - **The independent causal cross-check (PCMCI) hasn't been re-run since
   the main bug fixes.** It was fixed to compute a real statistical
-  agreement score instead of a vacuous one (§4.4), but that fix predates
-  the self-answer-shortcut fix (§4.2, Bug 1), so it hasn't been re-run
-  against the current, fully-fixed splitter yet. The script is ready:
+  agreement score instead of a vacuous one, but that fix predates the
+  self-answer-shortcut fix, so it hasn't been re-run against the
+  current, fully-fixed splitter yet. The script is ready:
   `code/scripts/run_pcmci_crosscheck.py`.
 
 ---
 
-## 15. Code map
+## 14. Code map
 
 All code lives under `DIR_GNN + DyMoE/code/`.
 
@@ -1023,28 +836,28 @@ code/
 ├── causal_moe/                  the actual library
 │   ├── data/
 │   │   ├── raw.py               loads the 6 fields + ocean mask
-│   │   ├── clustering.py        k-means -> 50 regions (§5)
+│   │   ├── clustering.py        k-means -> 50 regions (§4)
 │   │   ├── mesh.py              physical adjacency (raw cells + regions)
-│   │   ├── windows.py           49-value lagged features, OLR-N-days target (§6)
+│   │   ├── windows.py           49-value lagged features, OLR-N-days target (§5)
 │   │   ├── splits.py            chronological train/val/test split +
-│   │   │                        El Niño / gradual-drift test windows (§4.2)
-│   │   ├── candidate_edges.py   direct / 2hop / full candidate-pool variants (§7)
+│   │   │                        El Niño / gradual-drift test windows
+│   │   ├── candidate_edges.py   direct / 2hop / full candidate-pool variants (§6)
 │   │   ├── causaldynamics.py    loads validation data with known causal graphs
 │   │   └── semisynthetic.py     real features + a hand-injected, known causal
-│   │                            rule (the synthetic ground-truth test, §4.2, §10)
+│   │                            rule (the synthetic ground-truth test, §9)
 │   ├── splitter/
-│   │   ├── dirgnn.py            the causal splitter (§8)
-│   │   ├── cia.py               an alternative edge-selection mechanism (§8.2)
-│   │   └── gsina.py             an alternative edge-selection mechanism (§8.2)
+│   │   ├── dirgnn.py            the causal splitter (§7)
+│   │   ├── cia.py               an alternative edge-selection mechanism (§7.2)
+│   │   └── gsina.py             an alternative edge-selection mechanism (§7.2)
 │   ├── experts/
-│   │   ├── expert.py            the forecaster (§9)
-│   │   └── pool.py              the Mixture-of-Experts blending router (§12.3)
+│   │   ├── expert.py            the forecaster (§8)
+│   │   └── pool.py              the Mixture-of-Experts blending router (§11.3)
 │   ├── drift/
-│   │   ├── rodionov.py          the change-point statistical test (§12.1)
-│   │   ├── channels.py          both drift channels + how they're combined (§12.1)
-│   │   ├── archive.py           the hibernate/reactivate store (§12.2)
+│   │   ├── rodionov.py          the change-point statistical test (§11.1)
+│   │   ├── channels.py          both drift channels + how they're combined (§11.1)
+│   │   ├── archive.py           the hibernate/reactivate store (§11.2)
 │   │   └── forgetting.py        the "how much did we forget" metric
-│   └── baselines/simple.py      persistence / plain-GNN / random-subset comparisons (§14)
+│   └── baselines/simple.py      persistence / plain-GNN / random-subset comparisons (§13)
 ├── scripts/                      one runnable script per experiment
 ├── tests/                        144 automated tests, all passing
 ├── cache/                        preprocessed data (regenerable, not stored in git)
@@ -1062,9 +875,9 @@ the known-ground-truth validation data comes from
 
 ---
 
-## 16. Running it yourself
+## 15. Running it yourself
 
-### 16.1 Environment
+### 15.1 Environment
 
 This dev machine already has a working CPU-only PyTorch + PyTorch
 Geometric install at:
@@ -1095,38 +908,38 @@ python -m venv .venv
 .venv\Scripts\pip install -r code/requirements.txt
 ```
 
-### 16.2 Reproducing the headline numbers
+### 15.2 Reproducing the headline numbers
 
 All commands below run from inside `code/`.
 
 ```powershell
 # 50-region sweep, direct variant, 7-day horizon, honest out-of-sample
-# evaluation, 5 training epochs (this is the main citable result, §10-11)
+# evaluation, 5 training epochs (this is the main citable result, §9-10)
 python scripts/run_step7_all_places.py --variant direct --epochs 5 `
     --n-samples-cap 4000 --cache-path cache/windowed_clustered50_lead7.npz `
     --generator-window 10
 # -> results/step7_all_places_direct_lead7.json
 
 # Same sweep, with the 2hop and full candidate-pool variants (the
-# pool-size vs. discrimination-quality comparison, §10)
+# pool-size vs. discrimination-quality comparison, §9)
 python scripts/run_step7_all_places.py --variant 2hop --epochs 5 `
     --cache-path cache/windowed_clustered50_lead7.npz
 python scripts/run_step7_all_places.py --variant full --epochs 5 `
     --cache-path cache/windowed_clustered50_lead7.npz
 
-# 1-day-horizon sweep (the hardest case, §11.1)
+# 1-day-horizon sweep (the hardest case, §10.1)
 python scripts/run_step7_all_places.py --variant direct --epochs 5 `
     --cache-path cache/windowed_clustered50_lead1_v2.npz
 
 # CIA / GSINA re-verification, region 22 (matches the plain splitter's
-# settings exactly, for a fair comparison -- §8.2)
+# settings exactly, for a fair comparison -- §7.2)
 python scripts/train_step_cia_single_place.py --target 22 --variant direct `
     --epochs 5 --n-samples-cap 4000 --cache-path cache/windowed_clustered50_lead7.npz
 python scripts/train_step_gsina_single_place.py --target 22 --variant direct `
     --epochs 5 --n-samples-cap 4000 --cache-path cache/windowed_clustered50_lead7.npz
 
 # Mixture-of-Experts comparison: single-best-match vs. blended-pool,
-# and warm-start vs. fresh-spawn (§12.3; needs the drift
+# and warm-start vs. fresh-spawn (§11.3; needs the drift
 # signal file for the target region first, from run_step5_drift.py)
 python scripts/run_step5_drift.py --target 22 --variant direct `
     --cache-path cache/windowed_clustered50_lead7.npz
