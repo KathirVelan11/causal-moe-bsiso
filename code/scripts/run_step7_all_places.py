@@ -52,6 +52,55 @@ def parse_places(spec: str, n_clusters: int) -> list[int]:
     return [p for p in out if 0 <= p < n_clusters]
 
 
+INFORMATIVE_SCORE_STD = 0.02  # README SS9 discrimination gate
+
+_W: dict = {}
+
+
+def _init_worker(cache_path, args, cache=None) -> None:
+    import torch
+
+    torch.set_num_threads(1)
+    _W["cache"] = cache if cache is not None else load_cache(cache_path)
+    _W["args"] = args
+
+
+def _run_one(place: int) -> dict:
+    cache, args = _W["cache"], _W["args"]
+    res = train_place(
+        variant=args.variant,
+        target=place,
+        features_all=cache["features"],
+        targets_all=cache["targets"],
+        sample_time_index=cache["sample_time_index"],
+        real_edge_index=cache["edge_index"],
+        n_clusters=cache["n_clusters"],
+        args=args,
+        sample_dates=cache["sample_dates"].astype("datetime64[D]"),
+        olr_lag0_channel=cache["olr_lag0_channel"],
+        lags_days=cache["lags_days"],
+        lead_time_days=int(cache["lead_time_days"]),
+    )
+    beats = res["expert_mse"] < res["persistence_mse"]
+    skill = 1.0 - (res["expert_mse"] / res["persistence_mse"]) if res["persistence_mse"] > 0 else 0.0
+    return {
+        "place": place,
+        "n_candidate_sources": int(res["n_candidate_sources"]),
+        "prior_regions": res["prior_regions"],
+        "n_test": int(res["n_test"]),
+        "expert_mse": res["expert_mse"],
+        "persistence_mse": res["persistence_mse"],
+        "climatology_mse": res.get("climatology_mse"),
+        "r2_vs_persistence": res.get("r2_vs_persistence"),
+        "r2_vs_climatology": res.get("r2_vs_climatology"),
+        "skill_vs_persistence": skill,
+        "beats_persistence": bool(beats),
+        "score_std": res["score_std"],
+        "selected_sources": [int(s) for s in res["selected_sources"]],
+        "elapsed_s": res["elapsed_s"],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--variant", type=str, default="direct")
@@ -74,67 +123,62 @@ def main() -> None:
     parser.add_argument("--generator-all-fields", action="store_true",
                          help="B7 audit fix: feed the rationale generator all 6 fields, not just OLR "
                               "(train_place reads this via getattr; this script never exposed it before Phase 9.2).")
+    parser.add_argument("--season-path", type=str, default=None,
+                         help="Phase 1: results/phase1/bsiso_season.npz -- train/test only on samples whose target day is in the BSISO season")
+    parser.add_argument("--prior", type=str, default="none", choices=("none", "pcmci", "random", "corr"),
+                         help="Phase 1 Stage C: source-region prior handed to the splitter")
+    parser.add_argument("--prior-mode", type=str, default="restrict", choices=("restrict", "init", "regularize"))
+    parser.add_argument("--prior-path", type=str, default="results/phase1/causal_graph_50.json")
+    parser.add_argument("--prior-weight", type=float, default=1.0, help="regularize mode: penalty weight on off-shortlist edge scores")
+    parser.add_argument("--prior-init-scale", type=float, default=2.0, help="init mode: logit bias for the strongest prior region")
+    parser.add_argument("--workers", type=int, default=1, help="places trained in parallel processes")
+    parser.add_argument("--out", type=str, default=None, help="output JSON (default results/step7_all_places_<variant>.json)")
     args = parser.parse_args()
 
     RESULTS_DIR.mkdir(exist_ok=True)
     from scripts.train_step4_single_place import CACHE_PATH as DEFAULT_CACHE_PATH
-    cache = load_cache(args.cache_path or DEFAULT_CACHE_PATH)
+    cache_path = args.cache_path or DEFAULT_CACHE_PATH
+    cache = load_cache(cache_path)
     n_clusters = cache["n_clusters"]
     places = parse_places(args.places, n_clusters)
-    sample_dates = cache["sample_dates"].astype("datetime64[D]")
     print(f"step 7: {len(places)} places, variant={args.variant}, epochs={args.epochs}, "
-          f"cap={args.n_samples_cap}, OUT-OF-SAMPLE eval (test>={args.test_start})")
+          f"cap={args.n_samples_cap}, prior={args.prior}/{args.prior_mode}, season={'yes' if args.season_path else 'no'}, "
+          f"workers={args.workers}, OUT-OF-SAMPLE eval (test>={args.test_start})")
+    out_path = Path(args.out) if args.out else RESULTS_DIR / f"step7_all_places_{args.variant}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
     rows = []
     t_start = time.time()
-    for k, place in enumerate(places):
-        t0 = time.time()
-        res = train_place(
-            variant=args.variant,
-            target=place,
-            features_all=cache["features"],
-            targets_all=cache["targets"],
-            sample_time_index=cache["sample_time_index"],
-            real_edge_index=cache["edge_index"],
-            n_clusters=n_clusters,
-            args=args,
-            sample_dates=sample_dates,
-            olr_lag0_channel=cache["olr_lag0_channel"],
-            lags_days=cache["lags_days"],
-            lead_time_days=int(cache["lead_time_days"]),
-        )
-        beats = res["expert_mse"] < res["persistence_mse"]
-        skill = 1.0 - (res["expert_mse"] / res["persistence_mse"]) if res["persistence_mse"] > 0 else 0.0
-        rows.append({
-            "place": place,
-            "n_candidate_sources": int(res["n_candidate_sources"]),
-            "expert_mse": res["expert_mse"],
-            "persistence_mse": res["persistence_mse"],
-            "climatology_mse": res.get("climatology_mse"),
-            "r2_vs_persistence": res.get("r2_vs_persistence"),
-            "r2_vs_climatology": res.get("r2_vs_climatology"),
-            "skill_vs_persistence": skill,
-            "beats_persistence": bool(beats),
-            "score_std": res["score_std"],
-            "selected_sources": [int(s) for s in res["selected_sources"]],
-        })
+    if args.workers > 1:
+        import multiprocessing as mp
+        pool = mp.get_context("fork").Pool(args.workers, initializer=_init_worker, initargs=(cache_path, args))
+        results = pool.imap_unordered(_run_one, places)
+    else:
+        _init_worker(cache_path, args, cache)
+        results = map(_run_one, places)
+    for k, row in enumerate(results):
+        rows.append(row)
+        rows.sort(key=lambda r: r["place"])
         elapsed_all = time.time() - t_start
         eta = (elapsed_all / (k + 1)) * (len(places) - k - 1)
-        print(f"[{k+1}/{len(places)}] place {place:>2}: mse={res['expert_mse']:.4f} "
-              f"persist={res['persistence_mse']:.4f} skill={skill:+.3f} "
-              f"R2vsClim={res.get('r2_vs_climatology', float('nan')):+.3f} "
-              f"beats={'Y' if beats else 'n'} ({time.time()-t0:.0f}s, ETA {eta/60:.0f}m)")
+        print(f"[{k+1}/{len(places)}] place {row['place']:>2}: mse={row['expert_mse']:.4f} "
+              f"persist={row['persistence_mse']:.4f} skill={row['skill_vs_persistence']:+.3f} "
+              f"R2vsClim={row['r2_vs_climatology']:+.3f} score_std={row['score_std']:.4f} "
+              f"beats={'Y' if row['beats_persistence'] else 'n'} ({row['elapsed_s']:.0f}s, ETA {eta/60:.0f}m)")
 
         # checkpoint after every place so a long run is never lost
-        out_path = RESULTS_DIR / f"step7_all_places_{args.variant}.json"
         skills = [r["skill_vs_persistence"] for r in rows]
         r2_clims = [r["r2_vs_climatology"] for r in rows if r["r2_vs_climatology"] is not None]
         out_path.write_text(json.dumps({
             "variant": args.variant,
             "epochs": args.epochs,
             "n_samples_cap": args.n_samples_cap,
+            "prior": args.prior,
+            "prior_mode": args.prior_mode if args.prior != "none" else None,
+            "season": bool(args.season_path),
             "n_places_done": len(rows),
             "n_beating_persistence": sum(1 for r in rows if r["beats_persistence"]),
+            "n_informative": sum(1 for r in rows if r["score_std"] >= INFORMATIVE_SCORE_STD),
             "skill_mean": float(np.mean(skills)),
             "skill_median": float(np.median(skills)),
             "r2_vs_climatology_mean": float(np.mean(r2_clims)) if r2_clims else None,

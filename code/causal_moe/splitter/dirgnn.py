@@ -280,6 +280,7 @@ class DIRGNNSplitter(nn.Module):
         generator_window_len: int = 1,
         generator_in_channels: int | None = None,
         use_self_features: bool = True,
+        edge_prior_bias: torch.Tensor | None = None,
     ):
         """in_channels: per-timestep channel count fed to the SHARED
             ENCODER/prediction path (e.g. 3 for CausalDynamics' 3-lag
@@ -294,9 +295,15 @@ class DIRGNNSplitter(nn.Module):
         use_self_features: forwarded to SharedEncoder (Bug 2 audit fix,
             2026-09-23). Default True preserves prior behaviour as an
             explicit ablation; set False to make the invariance mechanism's
-            variance-across-swaps signal actually load-bearing."""
+            variance-across-swaps signal actually load-bearing.
+        edge_prior_bias: (n_edges,) optional -- Phase 1 "initialize" prior
+            mode. Becomes a learnable per-edge bias added to the
+            generator's raw scores, so source scores START from the causal
+            graph's strengths and training is free to move them. None
+            (default) = no bias, original behaviour."""
         super().__init__()
         self.r = r
+        self.edge_bias = None if edge_prior_bias is None else nn.Parameter(edge_prior_bias.clone().float())
         gen_channels = generator_in_channels if generator_in_channels is not None else in_channels
         self.generator = RationaleGenerator(gen_channels, generator_window_len, hidden_channels)
         self.encoder = SharedEncoder(in_channels, hidden_channels, use_self_features=use_self_features)
@@ -308,6 +315,8 @@ class DIRGNNSplitter(nn.Module):
         generator's history window (may be generator_window_len=1, i.e.
         shape (n_nodes, 1, in_channels), for single-timestep scoring)."""
         raw_scores = self.generator(x_window, edge_index)
+        if self.edge_bias is not None:
+            raw_scores = raw_scores + self.edge_bias
         edge_scores = torch.sigmoid(raw_scores)
         c_idx, c_w, s_idx, s_w = split_graph_top_r(edge_scores, edge_index, self.r)
         return SplitterOutput(
@@ -441,6 +450,8 @@ class DIRGNNSplitter(nn.Module):
         entropy_weight: float = 0.0,
         prior_rate_weight: float = 0.0,
         target_node_mask: torch.Tensor | None = None,
+        off_prior_mask: torch.Tensor | None = None,
+        off_prior_weight: float = 0.0,
     ) -> SplitterLossOutput:
         """x_anchor: (n_nodes, in_channels) anchor instance's features (fed
             to the shared encoder/prediction path -- single timestep, this
@@ -489,6 +500,10 @@ class DIRGNNSplitter(nn.Module):
             of their own under this place's expert -- only the target
             cluster's prediction should count toward loss). Default None
             preserves the original all-node-averaged behavior (steps 2/3).
+        off_prior_mask / off_prior_weight: Phase 1 "regularize" prior mode
+            -- (n_edges,) bool marking candidate edges OUTSIDE the causal
+            shortlist; adds off_prior_weight * mean(edge_scores[mask]) so
+            choosing them costs something. Default 0.0 = off.
         """
         if x_generator_window is None:
             x_generator_window = x_anchor.unsqueeze(1)  # (n_nodes, 1, in_channels)
@@ -526,6 +541,9 @@ class DIRGNNSplitter(nn.Module):
                 (1 - mean_score).log() - (1 - r).log()
             )
             total_loss = total_loss + prior_rate_weight * prior_kl
+
+        if off_prior_weight > 0.0 and off_prior_mask is not None and bool(off_prior_mask.any()):
+            total_loss = total_loss + off_prior_weight * split.edge_scores[off_prior_mask].mean()
 
         # Spurious leakage gauge: predict the same target from spurious
         # edges alone, gradient-blocked -- measurement only.

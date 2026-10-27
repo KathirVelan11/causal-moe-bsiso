@@ -46,6 +46,14 @@ drivers from noise when it only has to consider a region's *immediate
 neighbours*, and that reliability drops as the number of candidate
 regions it has to consider grows larger.
 
+**Phase 1 status (§13):** a causal graph is now built independently of
+the splitter, with PCMCI over all 300 (region, field) series, and checked
+four ways. It passes the noise test cleanly (0 of 250 decoys selected) and
+is fairly stable when the regions are redrawn at twice the resolution.
+The splitter code can now take that graph as a prior, in three ways, but
+the comparison runs against the controls have not been done yet. Whether
+the graph helps the forecast is therefore still open.
+
 **None of this was true when the project started.** The first working
 version of this pipeline produced a causal-discovery mechanism that was,
 when properly checked, statistically indistinguishable from picking
@@ -89,7 +97,7 @@ against this project's own results. GC-MoE has real public code
 GeoMoE has no public code (a substitute, GraphMoRE, exists with the same
 curvature-routing idea); DyMoE has no code either, only a loss formula in
 its paper. Implementing and running any of them wasn't completed — see
-§13 for exactly what *was* benchmarked.
+§14 for exactly what *was* benchmarked.
 
 ---
 
@@ -166,6 +174,13 @@ tropical intraseasonal weather variability this dataset captures across
 the whole year," not a claim that training was restricted to the BSISO
 season specifically.
 
+**Phase 1 changes this (§13).** The Phase 1 graph and every Phase 1
+training run use only *target days* inside the boreal-summer BSISO
+season. The season is defined per year from a BSISO index computed from
+our own OLR and u850 data. Source history outside the season is still
+used: a June target can be driven by April values. The year-round results
+in §9–§12 are kept as they were.
+
 ---
 
 ## 4. Step 1: From 3,600 grid cells to 50 regions
@@ -199,10 +214,11 @@ patches — because nearby cells usually do behave similarly anyway.
 ```
 
 **A concrete example of what a "region" is:** region 22 in this project
-(used throughout the examples below) sits over the equatorial Maritime
-Continent (roughly Sumatra/Indonesia) — a real location that turns out to
-be one of the more informative regions to study, because it sits at the
-crossroads of several monsoon circulation patterns.
+(used throughout the examples below) covers the western-central
+equatorial Pacific near the date line (0–10°N, 160°E–160°W, 53 grid
+cells). (Earlier versions of this README placed
+region 22 over Sumatra; checking its member cells shows that was wrong.
+The map in §13, figure 2, shows every region.)
 
 **One deliberate design choice worth understanding:** *how the 50 regions
 were formed* (grouping by OLR correlation) and *which regions are allowed
@@ -316,9 +332,10 @@ individually weaker, ways:**
    data. If it tends to agree with our model on which sources matter,
    that's supporting evidence — two different guessing methods agreeing
    is more reassuring than one method agreeing with itself, but it's
-   still not proof. (Status: this check was fixed so its agreement score
-   is actually meaningful, but hasn't yet been re-run against the
-   fully-fixed splitter; see §13.)
+   still not proof. (Status: in Phase 1, PCMCI was rerun at full scale
+   on all 300 series, §13. Its two outside drivers for region 22,
+   regions 27 and 6, are both among the splitter's own selections in the
+   `direct` pool.)
 3. **On fabricated data where we know the true answer, does the splitter
    find it?** A synthetic test: we build fake data where *we* inject a
    known rule — for example, "region A's future value = 0.6 × region B's
@@ -536,7 +553,7 @@ start. The capping capability is kept in the codebase
 in via `train_step4_single_place.py --max-candidates`, zero effect
 unless explicitly turned on) for whoever picks up this question next.
 This remains the clearest concretely-defined open problem in the project
-— see §13.
+— see §14.
 
 **Practical consequence for anyone using this project's output:** if you
 want to make a claim like "region X causally drives region Y," only
@@ -793,7 +810,252 @@ raw grid (3,600 cells)
 
 ---
 
-## 13. Current limitations, stated plainly
+## 13. Phase 1: build, validate and use a causal graph
+
+**The question:** can a causal graph, found statistically and checked
+independently, improve how the splitter chooses its sources? Until now
+the splitter found its own sources. Phase 1 instead builds a graph with
+PCMCI, independently of the splitter. The graph is then checked four ways,
+frozen, and handed to the splitter as a prior. The work has four stages:
+
+| Stage | Question | Status |
+|---|---|---|
+| A. Build (PCMCI) | Which sources, at which lag, still carry information about the target once indirect paths and common drivers are removed? | **Done** |
+| B. Validate (B1–B4) | Is the graph better than chance, physically possible, small enough, and stable? | **Done** |
+| C. Use | Does the graph, used as a prior, help the splitter on 2013–2022? | **Code done and tested; no-prior baseline run; prior runs not yet run** |
+| D. Keep current | Does the causal structure change over time? | **Done** (weak result, §13.5) |
+
+All Phase 1 outputs are in `code/results/phase1/`.
+
+### 13.1 Data: nodes, years, season
+
+- **Nodes.** Each region has 6 fields (sst, h850, u200, pw, u850, olr), so
+  50 × 6 = **300 nodes**. A node's series is the region mean of its cells,
+  re-standardized over the discovery years. SST is averaged over ocean
+  cells only.
+- **Years.** **1979–2012** are used to build the graph (and train the
+  models). **2013–2022 are held out** and used only for testing.
+- **Season.** A BSISO index is computed from our own OLR and u850 data,
+  following the recipe of Lee et al. (2013):
+  - the domain is 10°S–30°N, 40–160°E (our grid stops at 30°N);
+  - the trailing 120-day mean is removed;
+  - a combined EOF of the two fields is fitted on May–October days of
+    1979–2012 only;
+  - the first two modes explain 11.2% and 7.7% of the variance (Lee et
+    al. report about 10% and 7%).
+
+  Each year's season runs from the first to the last stretch of at least
+  20 days in which the 31-day mean amplitude exceeds 1, padded by 21 days
+  at each end. That gives **208 days a year on average (82–286)**, with
+  onset ranging from April to July. Only *target days* must fall in the
+  season; source values can come from any day.
+
+![BSISO amplitude by day of year, and the active season found for each year](code/results/phase1/figures/01_bsiso_season.png)
+
+### 13.2 Stage A: PCMCI
+
+For each of the 50 OLR targets, every one of the 300 nodes at every lag
+from 1 to 60 days is a candidate. That is **18,000 candidates per
+target**, tested on **7,153 season target days**. Lag 0 is excluded, so
+the direction of each link comes from time order.
+
+The method has two steps:
+1. **PC1 screening.** Partial-correlation tests drop candidates that are
+   independent of the target, conditioning on the strongest surviving
+   candidates found so far.
+2. **MCI final test.** Each survivor is retested while conditioning on the
+   target's other parents and on the source's own parents. The p-values
+   are then Benjamini–Hochberg corrected over all 18,000 tests, and a link
+   is kept at an FDR of 0.05.
+
+The settings are `pc_alpha` = 0.05, and other nodes may only take their
+own past as parents. Calling tigramite directly at this size was too
+slow, so `causal_moe/causal_graph/pcmci.py` is a vectorized version of
+the same algorithm. `tests/test_pcmci.py` checks it link for link against
+tigramite. The full run takes about 23 minutes.
+
+**Result:** **536 significant links**, 10.7 per target on average.
+- **376 are within the target's own region**, mostly its own OLR at
+  lags 1–7.
+- **160 come from other regions.** By field: OLR 72, u850 37, u200 22,
+  h850 18, PW 11. There is no SST link from another region.
+- **Outside links are short-lag:** median lag 1 day, 90% at 2 days or
+  less, and none at 25 days or more. The direct effect of slow precursors
+  (e.g. spring SST) appears to be absorbed once PCMCI conditions on
+  short-lag parents.
+
+![Map of the validated outside drivers: arrows from source to target region, coloured by whether they persist at 100 regions](code/results/phase1/figures/02_graph_map.png)
+
+The outside links are mostly between neighbouring regions. A handful are
+longer wind and height links (e.g. 22 → 32, 46 → 28, 8 → 38) that need
+1–2 days at wave speeds.
+
+Region 22 is the walk-through example:
+
+| Step | Edges left | What happened |
+|---|---|---|
+| PCMCI | 13 | 10 within region 22 (own OLR at lags 1–3 and 5–7, u850 and h850 at lags 1–2), plus h850 from region 27 at lags 1 and 3, and PW from region 6 at lag 2 |
+| B1 decoys | 13 | No decoy was selected anywhere, so there is no strength bar to clear |
+| B2 lag mask | 13 | The outside sources are about 280 km away; implied speeds of 1–3 m/s are possible |
+| B3 top-k | 3 drivers | The 3 outside links are kept; region 22's own links don't count against the budget |
+| B4 persistence | score 0.67 | Both region-27 links reappear at 100 regions; the region-6 PW link does not and is flagged |
+
+The prior given to the splitter is **region 27 (strength 0.21) and
+region 6 (0.05)**. Trained on season days in the `direct` pool with no
+prior, the splitter picks regions 6, 12 and 27 on its own. Both prior
+regions are among them: two unrelated methods agreeing.
+
+### 13.3 Stage B: four checks
+
+| Check | What it does | Result |
+|---|---|---|
+| **B1 decoys** | 250 decoys made by phase-randomizing real node series. Each keeps its spectrum, including the 30–60-day peak, but has no real link to anything. PCMCI is run with them in the pool (550 nodes, 33,000 candidates per target), as a separate pass. | **0 of 250 decoys selected** (gate: under 30%). The real graph in this pass barely changes (10.3 vs 10.7 links per target). With no selected decoy, there is no strength threshold, so B1 removes no real edge. |
+| **B2 lag mask** | Implied speed = shortest cell-to-cell distance between the two regions ÷ lag. Generous limits per source field: SST 1 m/s; OLR and PW 20 m/s (coupled Kelvin waves); h850, u850 and u200 50 m/s. Lags of 25 days or more are flagged as possible echoes of the oscillation, not dropped. | **3 of 536 links fail**, all at lag 1: h850 region 22 → 32 (5,531 km, 64 m/s), OLR 28 → 33 (2,889 km, 33 m/s) and OLR 3 → 47 (2,215 km, 26 m/s). Of the links kept, 28 outside links span 500–5,500 km. The fastest is 46 m/s, from wave-like wind and height links. No link reaches the 25-day flag. |
+| **B3 top-k** | Rank each target's outside links by strength and keep k. k is chosen by how well a target's own-region links plus its top-k outside links predict the target on 2005–2012 season days, after fitting on 1979–2004. | Validation R² rises with every k: 0.9619 at k=0 to 0.9633 at k=10. So **k = 10**, which equals the largest number of outside links any target has. **B3 cuts nothing**: PCMCI with FDR is already sparse, at **2.06 prior regions per target**. 2 targets (13 and 42) have no outside driver. |
+| **B4 resolution** | Each region is split in two (100 regions, 596 nodes) and Stage A is run again. A link persists if any child pair carries the same field within ±2 days of the same lag. | **Mean persistence 0.62; 33 of 48 targets pass** (≥ 0.50). By field, OLR links persist best (56 of 70) and PW links worst (4 of 11). Links that fail are flagged, not deleted. |
+
+![Links left after each check, and the number of prior regions per target](code/results/phase1/figures/03_links_through_checks.png)
+
+![B1: strength of real links with and without decoys in the pool; 0 of 250 decoys selected](code/results/phase1/figures/04_b1_decoys.png)
+
+![B2: implied speed vs distance for every outside link, per source field, with the speed limits](code/results/phase1/figures/05_b2_speed.png)
+
+![B3: validation R² against k, and the gain from each extra outside link](code/results/phase1/figures/06_b3_k.png)
+
+![B4: persistence score per target at 100 regions, and by source field](code/results/phase1/figures/07_b4_persistence.png)
+
+The frozen graph, with every flag, is in
+`results/phase1/causal_graph_50.json`. For each target it holds the
+validated links (source region, field, lag, strength, distance, speed,
+flags), plus the region-level `prior` that goes to the splitter.
+
+**Field and lag detail stay in the graph, not the splitter.** Each of the
+splitter's candidate edges is a whole source region carrying lags 0–10.
+So a target's validated links are merged into one prior per region,
+whose strength is the largest |MCI value| among that region's links.
+
+### 13.4 Stage C: the graph as a splitter prior
+
+**Implemented** in `causal_moe/causal_graph/prior.py`, plus small hooks
+in the splitter and the training scripts. All of it is off by default,
+so earlier results reproduce unchanged. There are three ways to give the
+prior to the splitter:
+
+- **restrict** — the candidate pool becomes the prior regions plus the
+  target itself.
+- **initialize** — a learnable bias is added to each edge's score, so a
+  prior region starts with a score boost proportional to its strength.
+- **regularize** — a penalty is added on the scores of regions outside
+  the prior.
+
+And three priors to compare:
+
+- **pcmci** — the validated graph above.
+- **random** — the same number of regions per target, drawn at random
+  from the same pool. The PCMCI strengths are shuffled onto them.
+- **corr** — the same number of regions, ranked by raw lagged
+  correlation on training rows only. This is the prior that already
+  failed as a pool cap in §9.
+
+The target region is always a candidate and is never biased or
+penalized.
+
+**Baseline run on season days (no prior)**, with the same settings as
+§9 (5 epochs, 4,000-sample training cap) and testing on the 1,989
+season target days of 2013–2022:
+
+| Candidate pool | Edge scores informative | Beat persistence | Mean skill vs persistence | Beat climatology | Mean R² vs climatology |
+|---|---|---|---|---|---|
+| direct | **30 / 50** | 50 / 50 | +0.412 | 15 / 50 | −0.020 |
+| 2hop | 9 / 50 | 50 / 50 | +0.413 | 18 / 50 | −0.018 |
+| full | 0 / 50 | 50 / 50 | +0.415 | 14 / 50 | −0.015 |
+
+(Source: `results/phase1/stage_c/{direct,2hop,full}_none.json`.) This is
+the same pattern as the year-round results in §9:
+- edge-score discrimination falls as the pool grows;
+- skill against persistence is flat;
+- the model still loses to climatology on average at 7 days.
+
+**Not yet run: the 27 prior configurations** (3 priors × 3 modes × 3
+pools, at 50 regions each), because of compute. That is 1,350
+trainings, about 6–8 hours on 12 worker processes. To run them
+(the script resumes if stopped):
+
+```bash
+cd code
+python scripts/phase1_run_stage_c.py --workers 12
+# a cheaper first step, matching the plan's advice to run the
+# random-prior control before anything else:
+python scripts/phase1_run_stage_c.py --pools full --priors random,pcmci --modes restrict
+```
+
+**Things to keep in mind when reading those runs:**
+
+- **In initialize mode, the prior bias itself spreads the edge scores.**
+  That alone can push a region past the "informative" threshold. Compare
+  initialize-mode runs with the random prior of equal size, not with the
+  no-prior run.
+- **The graph's outside links are 1–2-day links, but the forecast is 7
+  days ahead.** The prior says *which regions* matter, but the
+  relationships PCMCI found act faster than the forecast horizon.
+
+### 13.5 Stage D: does the causal structure change over time?
+
+For each target, PCMCI is rerun on sliding windows of BSISO seasons. Each
+window uses only that target's links that passed B1 and B2, plus its own
+OLR at lags 1–3. A window's parent set is its significant (source region,
+field) pairs. The distance between consecutive windows is
+1 − Jaccard(parent sets). That series goes into the project's existing
+Rodionov/STARS test for regime shifts.
+
+To compare with ENSO, a Niño-3.4 index is computed from our SST field:
+5°S–5°N, 170°W–120°W, season mean, trend removed. El Niño is > +0.5 SD
+and La Niña is < −0.5 SD. It matches the known ENSO phase in 22 of 24
+labelled years; 1989 and 2008 are wrong.
+
+| Window | Parents per window | Distance when ENSO phase changed vs when it didn't | Alarms from the 50-target average | Per-target alarms |
+|---|---|---|---|---|
+| 1 season | 1.1–1.3 | 0.164 vs 0.151 (Mann–Whitney p = 0.20) | 2004, 2011, 2016 | 55 alarms. 76% fall in years with a phase change, but 67% of all years have one. 13 fall in stable years. |
+| 3 seasons | 1.6–2.0 | 0.200 vs 0.207 (p = 0.76) | none | 21 alarms. 43% fall in phase-change years; 12 in stable years. |
+
+(Source: `results/phase1/stage_d_drift_w{1,3}.json`.)
+
+![Stage D: mean change in parent sets by year, with El Niño and La Niña seasons shaded and STARS alarms marked](code/results/phase1/figures/08_stage_d_drift.png)
+
+**What this shows:** at these window lengths, changes in the causal
+structure do **not** reliably line up with ENSO phase changes. With only
+1–2 parents per window, the parent set is mostly the target's own OLR
+plus whichever outside link clears FDR in that window. Sampling noise
+dominates.
+
+One alarm, 2016, does coincide with the 2015–16 El Niño ending, but that
+is a single case. As built, this signal is **not yet good enough to
+drive the expert lifecycle**. Longer windows with a rolling reference,
+or a softer distance (comparing strengths instead of set membership),
+are the obvious next things to try.
+
+### 13.6 Phase 1 so far
+
+- **The graph passes the checks that test whether a graph is
+  trustworthy:**
+  - no decoy is selected;
+  - only 3 links need a physically impossible speed;
+  - 62% of links persist when the regions are redrawn at twice the
+    resolution;
+  - for region 22, both prior regions are among the splitter's own
+    selections.
+- **The graph is sparse, short-lag and mostly local:** about 2 outside
+  regions per target, at lags of 1–2 days.
+- **Not answered yet: does the prior help the splitter on 2013–2022?**
+  That needs the Stage C runs above.
+- **The plan says to run the random prior first.** If a random prior of
+  the same size matches the PCMCI prior on edge-score discrimination
+  and skill, the bottleneck is not which sources the splitter chooses,
+  and the splitter's objective should be revisited instead.
+
+---
+
+## 14. Current limitations, stated plainly
 
 - **Causal-discrimination reliability depends heavily on candidate-pool
   size** (§9) — trustworthy for `direct`, not for `2hop`/`full`. One
@@ -817,19 +1079,41 @@ raw grid (3,600 cells)
   `code/causal_moe/baselines/simple.py`
   (`code/results/step8_baselines_place22_direct.json`): persistence, a
   plain GNN using every candidate edge with no selection, and a random
-  fixed-size edge subset.
-- **The independent causal cross-check (PCMCI) hasn't been re-run since
-  the main bug fixes.** It was fixed to compute a real statistical
-  agreement score instead of a vacuous one, but that fix predates the
-  self-answer-shortcut fix, so it hasn't been re-run against the
-  current, fully-fixed splitter yet. The script is ready:
-  `code/scripts/run_pcmci_crosscheck.py`.
+  fixed-size edge subset. That results file is a short smoke test (1
+  epoch, 200 samples, 1-day lead), not a full comparison.
+- **At 7 days the model does not beat climatology on average** (mean
+  R² vs climatology is about −0.02 in both the year-round and the season
+  runs). "Beats persistence" is a low bar at 7 days, because OLR keeps
+  almost no memory over a week.
+- **Phase 1's causal prior has not yet been tested in the forecaster**
+  (§13.4). The graph has been built and validated, and the code to use
+  it is written and tested, but the comparison runs are still pending.
+- **Phase 1 graph caveats** (§13):
+  - **Statistical power.** 18,000 candidates per target on strongly
+    autocorrelated daily data means some links will be missed and some
+    will be false, even after FDR.
+  - **Hidden common drivers.** PCMCI assumes all common drivers are
+    measured. BSISO phase, ENSO and moisture are only partly captured.
+  - **Unstable field choice within a region.** The fields in one region
+    move together with the same wave, so which field PCMCI picks can
+    change between runs.
+  - **Partly circular regions.** The regions were built from OLR
+    correlation and are then used to find OLR links.
+  - **Climatology overlaps the test years.** The upstream anomaly
+    climatology was fitted on 1979–2014, which overlaps the 2013–2022
+    test years by two years.
+  - **No second data source.** The graph has not been checked against a
+    second reanalysis or another OLR product.
+  - **Short lags vs the forecast lead.** The outside links found are
+    1–2-day links, shorter than the 7-day lead.
+- **The Phase 1 drift signal is weak** (§13.5). Changes in the causal
+  structure between seasons do not reliably track ENSO phase changes.
 
 ---
 
-## 14. Code map
+## 15. Code map
 
-All code lives under `DIR_GNN + DyMoE/code/`.
+All code lives under `code/`.
 
 ```
 code/
@@ -852,65 +1136,74 @@ code/
 │   ├── experts/
 │   │   ├── expert.py            the forecaster (§8)
 │   │   └── pool.py              the Mixture-of-Experts blending router (§11.3)
+│   ├── causal_graph/            Phase 1 (§13)
+│   │   ├── season.py            BSISO index + per-year active season
+│   │   ├── nodes.py             300 (region, field) series, 100-region split,
+│   │   │                        region distances
+│   │   ├── pcmci.py             Stage A: PCMCI (PC1 + MCI, ParCorr, BH-FDR)
+│   │   ├── validate.py          Stage B: decoys, lag mask, top-k, persistence
+│   │   └── prior.py             Stage C: pcmci / random / corr priors and
+│   │                            restrict / init / regularize modes
 │   ├── drift/
 │   │   ├── rodionov.py          the change-point statistical test (§11.1)
 │   │   ├── channels.py          both drift channels + how they're combined (§11.1)
 │   │   ├── archive.py           the hibernate/reactivate store (§11.2)
 │   │   └── forgetting.py        the "how much did we forget" metric
-│   └── baselines/simple.py      persistence / plain-GNN / random-subset comparisons (§13)
+│   └── baselines/simple.py      persistence / plain-GNN / random-subset comparisons (§14)
 ├── scripts/                      one runnable script per experiment
-├── tests/                        144 automated tests, all passing
+├── tests/                        150 automated tests, all passing (the
+│                                 CausalDynamics test also needs xarray
+│                                 and its external data)
 ├── cache/                        preprocessed data (regenerable, not stored in git)
 └── results/                      every experiment's numeric result, plus
-    └── phase9_figures/            the charts embedded in this document
+    ├── phase9_figures/            the charts embedded in this document
+    └── phase1/                    Phase 1 graph, checks, Stage C/D results
 ```
+
+Phase 1 scripts: `scripts/phase1_build_graph.py` (Stages A–B),
+`scripts/phase1_run_stage_c.py` (Stage C grid),
+`scripts/phase1_stage_d_drift.py` (Stage D),
+`scripts/generate_phase1_figures.py` (§13 figures). Stage C reuses
+`train_step4_single_place.py` / `run_step7_all_places.py`, which gained
+`--season-path`, `--prior`, `--prior-mode`, `--workers` and `--out`.
+All of these are off by default.
 
 **Reference implementations used** (real published code, not
 reimplemented from scratch): the causal-splitter mechanics come from
 [Wuyxin/DIR-GNN](https://github.com/Wuyxin/DIR-GNN) (Wu et al., ICLR
 2022); the independent causal cross-check uses
-[tigramite](https://github.com/jakobrunge/tigramite)'s PCMCI algorithm;
+[tigramite](https://github.com/jakobrunge/tigramite)'s PCMCI algorithm
+(Phase 1 uses a vectorized version of the same algorithm, tested
+against tigramite);
 the known-ground-truth validation data comes from
 [kausable/CausalDynamics](https://github.com/kausable/CausalDynamics).
 
 ---
 
-## 15. Running it yourself
+## 16. Running it yourself
 
-### 15.1 Environment
+### 16.1 Environment
 
-This dev machine already has a working CPU-only PyTorch + PyTorch
-Geometric install at:
+Python 3.12 with the pinned requirements (CPU-only PyTorch) plus
+tigramite (used by the PCMCI test). The dataset is read from
+`data/raw/rt_preprocessed_archive/` (or a legacy `Dataset/` folder next
+to `code/`).
 
-```
-C:\Users\ok\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe
-```
-
-Reuse it instead of downloading another copy of torch (large, slow). Run
-everything with that interpreter, e.g.:
-
-```powershell
-& "C:\Users\ok\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe" -m pytest code/tests -q
+```bash
+uv venv .venv --python 3.12        # or: python -m venv .venv
+uv pip install --python .venv/bin/python -r code/requirements.txt tigramite
+cd code
+../.venv/bin/python -m pytest tests -q --ignore=tests/test_causaldynamics.py
 ```
 
-Missing from that venv but needed for the error-based drift-detection
-channel only (`river.drift.ADWIN`):
+### 16.2 Reproducing the headline numbers
 
-```powershell
-& "C:\Users\ok\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe" -m pip install river==0.22.0
+All commands below run from inside `code/`. Build the 7-day cache
+first (`code/cache/` is not in git):
+
+```bash
+python scripts/build_mesh_cache.py --lead-time-days 7
 ```
-
-**On another machine** (no hermes-agent venv available): create a normal
-venv and install `requirements.txt`:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\pip install -r code/requirements.txt
-```
-
-### 15.2 Reproducing the headline numbers
-
-All commands below run from inside `code/`.
 
 ```powershell
 # 50-region sweep, direct variant, 7-day horizon, honest out-of-sample
@@ -950,4 +1243,25 @@ python scripts/run_step6_lifecycle.py --target 22 --variant direct `
 # from existing results, no training)
 python scripts/generate_phase9_figures.py
 # -> results/phase9_figures/*.png
+```
+
+### 16.3 Phase 1
+
+```bash
+# Stages A + B: season, PCMCI at 50 regions, decoy pass, PCMCI at 100
+# regions, validation -> results/phase1/causal_graph_50.json
+# (about 2.5 h on 20 threads; each stage can be rerun alone with --stages)
+python scripts/phase1_build_graph.py --verbose
+
+# Stage C: the no-prior baseline on season days (done, ~1 h on 5 workers)
+python scripts/phase1_run_stage_c.py --workers 5 --priors none
+# Stage C: the full prior grid (not yet run, ~6-8 h on 12 workers; resumes)
+python scripts/phase1_run_stage_c.py --workers 12
+
+# Stage D: sliding-window causal-structure distance + STARS + ENSO check
+python scripts/phase1_stage_d_drift.py --window-seasons 1
+python scripts/phase1_stage_d_drift.py --window-seasons 3
+
+# Figures for §13 (plots saved results only, ~1 min)
+python scripts/generate_phase1_figures.py   # -> results/phase1/figures/*.png
 ```

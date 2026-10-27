@@ -26,9 +26,15 @@ TARGET_FIELD = "olr"
 def default_dataset_root() -> Path:
     """The dataset root, resolved relative to this repo's known layout.
 
-    code/causal_moe/data/raw.py -> code/ -> "DIR_GNN + DyMoE"/ -> Dataset/
+    code/causal_moe/data/raw.py -> code/ -> repo/ -> Dataset/ (original
+    layout), falling back to repo/data/raw/ (current layout, where the
+    archive sits at data/raw/rt_preprocessed_archive).
     """
-    return Path(__file__).resolve().parents[2].parent / "Dataset"
+    repo = Path(__file__).resolve().parents[2].parent
+    legacy = repo / "Dataset"
+    if (legacy / "rt_preprocessed_archive").exists():
+        return legacy
+    return repo / "data" / "raw"
 
 
 @dataclass

@@ -182,31 +182,6 @@ def train_place(
     rng = np.random.default_rng(args.seed)
     torch.manual_seed(args.seed)
 
-    candidate_set = build_candidate_source_set(real_edge_index, target, variant, n_clusters=n_clusters)
-
-    # B18 fix: optionally shrink a large candidate pool (typically "full"'s
-    # all-50) to the top-`max_candidates` sources by raw lagged correlation
-    # with the target, before it ever reaches the encoder. Root cause was
-    # candidate-pool-SIZE diluting the shared encoder's edge-score
-    # discrimination (PROJECT_PLAN.md Bug 18) -- confirmed at the mesh-wide
-    # level: "full" (50 candidates) cleared the discrimination gate at
-    # 0/50 places vs "direct" (~6 candidates) at 27/50, while forecasting
-    # accuracy stayed flat across pool sizes. Capping keeps most of a
-    # large variant's reach while shrinking the pool back toward the range
-    # where discrimination survives. Off by default (max_candidates=0) so
-    # existing direct/2hop/full results are reproduced exactly unless
-    # explicitly requested.
-    max_candidates = getattr(args, "max_candidates", 0)
-    if max_candidates and max_candidates > 0:
-        olr_lag0_series_full = features_all[:, :, olr_lag0_channel]
-        candidate_set = cap_candidate_source_set(candidate_set, olr_lag0_series_full, max_candidates)
-
-    sources = candidate_set.source_clusters
-    n_sources = sources.shape[0]
-    print(f"\n=== variant={candidate_set.variant}  target={target}  n_candidate_sources={n_sources} ===")
-
-    causal_edge_index_full = torch.from_numpy(expand_source_clusters_to_edge_index(sources, target))
-
     n_features = features_all.shape[-1]
 
     n_samples_full = features_all.shape[0]
@@ -233,6 +208,60 @@ def train_place(
         n85 = int(0.85 * n_samples_full)
         train_pool_idx = np.arange(0, n85)
         test_idx_full = np.arange(n85, n_samples_full)
+
+    # Phase 1 (spec SS2, decision 3): keep only samples whose TARGET day
+    # (today + lead) falls in the BSISO active season, for both training
+    # and test. Off unless --season-path is given.
+    season_path = getattr(args, "season_path", None)
+    if season_path:
+        from causal_moe.causal_graph.season import target_day_mask
+        season = np.load(season_path)
+        in_season = target_day_mask(sample_dates_full, lead_time_days, season["time"], season["in_season"])
+        train_pool_idx = train_pool_idx[in_season[train_pool_idx]]
+        test_idx_full = test_idx_full[in_season[test_idx_full]]
+
+    candidate_set = build_candidate_source_set(real_edge_index, target, variant, n_clusters=n_clusters)
+
+    # B18 fix: optionally shrink a large candidate pool (typically "full"'s
+    # all-50) to the top-`max_candidates` sources by raw lagged correlation
+    # with the target, before it ever reaches the encoder. Root cause was
+    # candidate-pool-SIZE diluting the shared encoder's edge-score
+    # discrimination (PROJECT_PLAN.md Bug 18) -- confirmed at the mesh-wide
+    # level: "full" (50 candidates) cleared the discrimination gate at
+    # 0/50 places vs "direct" (~6 candidates) at 27/50, while forecasting
+    # accuracy stayed flat across pool sizes. Capping keeps most of a
+    # large variant's reach while shrinking the pool back toward the range
+    # where discrimination survives. Off by default (max_candidates=0) so
+    # existing direct/2hop/full results are reproduced exactly unless
+    # explicitly requested.
+    max_candidates = getattr(args, "max_candidates", 0)
+    if max_candidates and max_candidates > 0:
+        olr_lag0_series_full = features_all[train_pool_idx, :, olr_lag0_channel]
+        candidate_set = cap_candidate_source_set(candidate_set, olr_lag0_series_full, max_candidates)
+
+    # Phase 1 Stage C: a causal-graph (or control) prior over source regions.
+    # Off unless --prior is something other than "none".
+    prior_kind = getattr(args, "prior", "none")
+    prior_mode = getattr(args, "prior_mode", "restrict")
+    prior, edge_prior_bias, off_prior_mask = {}, None, None
+    if prior_kind != "none":
+        from causal_moe.causal_graph.prior import apply_prior, build_prior, load_pcmci_prior
+        prior = build_prior(
+            prior_kind, target, candidate_set.source_clusters,
+            load_pcmci_prior(args.prior_path, target),
+            olr_train=features_all[train_pool_idx, :, olr_lag0_channel], seed=args.seed,
+        )
+        candidate_set, bias_np, mask_np = apply_prior(prior_mode, candidate_set, prior,
+                                                      init_scale=getattr(args, "prior_init_scale", 2.0))
+        edge_prior_bias = None if bias_np is None else torch.from_numpy(bias_np)
+        off_prior_mask = None if mask_np is None else torch.from_numpy(mask_np)
+        print(f"prior={prior_kind} mode={prior_mode}: {len(prior)} prior regions {sorted(prior)}")
+
+    sources = candidate_set.source_clusters
+    n_sources = sources.shape[0]
+    print(f"\n=== variant={candidate_set.variant}  target={target}  n_candidate_sources={n_sources} ===")
+
+    causal_edge_index_full = torch.from_numpy(expand_source_clusters_to_edge_index(sources, target))
 
     # B5 audit fix: --n-samples-cap now defaults to a CONTIGUOUS chronological
     # prefix of the training pool (cap_contiguous=True by default), not a
@@ -286,7 +315,7 @@ def train_place(
     splitter = DIRGNNSplitter(
         in_channels=n_features, hidden_channels=16, r=r,
         generator_window_len=args.generator_window, generator_in_channels=gen_in_channels,
-        use_self_features=args.use_self_features,
+        use_self_features=args.use_self_features, edge_prior_bias=edge_prior_bias,
     )
     expert = PlaceExpert(in_channels=n_features, hidden_channels=16, self_bypass=args.self_bypass)
     optimizer = torch.optim.Adam(list(splitter.parameters()) + list(expert.parameters()), lr=args.lr)
@@ -318,6 +347,8 @@ def train_place(
                     x_generator_window=gen_windows[idx],
                     entropy_weight=args.entropy_weight,
                     target_node_mask=target_mask,
+                    off_prior_mask=off_prior_mask,
+                    off_prior_weight=getattr(args, "prior_weight", 0.0) if off_prior_mask is not None else 0.0,
                 )
 
                 # Reuse compute_loss's own internal split instead of calling
@@ -419,6 +450,9 @@ def train_place(
     return {
         "variant": candidate_set.variant,
         "n_candidate_sources": n_sources,
+        "prior": prior_kind,
+        "prior_mode": prior_mode if prior_kind != "none" else None,
+        "prior_regions": sorted(int(r) for r in prior),
         "r": r,
         "expert_mse": expert_mse,
         "persistence_mse": persistence_mse,
@@ -446,7 +480,7 @@ run_variant = train_place
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target", type=int, default=22, help="target cluster id (default 22 = equatorial Sumatra/Maritime Continent)")
+    parser.add_argument("--target", type=int, default=22, help="target cluster id (default 22 = equatorial western-central Pacific near the date line)")
     parser.add_argument("--variants", type=str, default="direct,2hop,full")
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--r", type=float, default=None, help="top-r fraction; default = min(0.5, 3/n_candidates)")
@@ -478,6 +512,14 @@ def main() -> None:
                               "confirmed mesh-wide: full/50-candidates cleared the discrimination gate at "
                               "0/50 places vs direct/~6-candidates at 27/50). Default 0 = off, reproduces "
                               "existing direct/2hop/full results exactly.")
+    parser.add_argument("--season-path", type=str, default=None,
+                         help="Phase 1: results/phase1/bsiso_season.npz -- train/test only on samples whose target day is in the BSISO season")
+    parser.add_argument("--prior", type=str, default="none", choices=("none", "pcmci", "random", "corr"),
+                         help="Phase 1 Stage C: source-region prior handed to the splitter")
+    parser.add_argument("--prior-mode", type=str, default="restrict", choices=("restrict", "init", "regularize"))
+    parser.add_argument("--prior-path", type=str, default="results/phase1/causal_graph_50.json")
+    parser.add_argument("--prior-weight", type=float, default=1.0, help="regularize mode: penalty weight on off-shortlist edge scores")
+    parser.add_argument("--prior-init-scale", type=float, default=2.0, help="init mode: logit bias for the strongest prior region")
     args = parser.parse_args()
 
     t0 = time.time()
