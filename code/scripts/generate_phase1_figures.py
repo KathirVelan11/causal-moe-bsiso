@@ -13,6 +13,8 @@ results/phase1/figures/*.png:
   06_b3_k.png                validation R^2 vs k
   07_b4_persistence.png      persistence per target and per field
   08_stage_d_drift.png       causal-structure distance by year vs ENSO
+  09_stage_c_pcmci_vs_none.png  PCMCI prior (full, restrict) vs no prior
+                             (only if stage_c/full_pcmci_restrict.json exists)
 
 Usage:
     python scripts/generate_phase1_figures.py
@@ -401,6 +403,52 @@ def fig_drift():
     save(fig, "08_stage_d_drift.png")
 
 
+# ------------------------------------------------------------------ 09 ----
+def fig_stage_c():
+    none, pcmci = load("stage_c/full_none.json"), load("stage_c/full_pcmci_restrict.json")
+    configs = [("no prior", none, BLUE), ("PCMCI prior (restrict)", pcmci, ORANGE)]
+    d_r2 = pcmci["r2_vs_climatology_mean"] - none["r2_vs_climatology_mean"]
+    d_skill = pcmci["skill_mean"] - none["skill_mean"]
+    if abs(d_r2) < 0.005 and abs(d_skill) < 0.005:
+        verdict = "no meaningful difference from no prior"
+    elif d_r2 > 0 and d_skill > 0:
+        verdict = "PCMCI prior beats no prior on both mean scores"
+    elif d_r2 < 0 and d_skill < 0:
+        verdict = "PCMCI prior is worse than no prior on both mean scores"
+    else:
+        verdict = "mixed: PCMCI prior wins on one mean score, loses on the other"
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.6))
+    w = 0.38
+    for ax, keys, labels, fmt in (
+        (ax1, ["n_beating_climatology", "n_beating_persistence"], ["beat climatology", "beat persistence"], "{:.0f}"),
+        (ax2, ["r2_vs_climatology_mean", "skill_mean"], ["R² vs climatology", "skill vs persistence"], "{:+.3f}"),
+    ):
+        x = np.arange(len(keys))
+        for i, (name, s, color) in enumerate(configs):
+            vals = [s[k] for k in keys]
+            bars = ax.bar(x + (i - 0.5) * (w + 0.02), vals, w, color=color, label=name)
+            for b, v in zip(bars, vals):
+                ax.text(b.get_x() + b.get_width() / 2, max(v, 0) + (1 if fmt == "{:.0f}" else 0.01),
+                        fmt.format(v), ha="center", fontsize=8.5, color=INK)
+        ax.set_xticks(x, labels)
+        ax.grid(axis="x", visible=False)
+        ax.axhline(0, color=INK2, lw=0.8)
+    ax1.set_ylim(0, 55)
+    ax1.set_ylabel(f"regions (of {none['n_places_done']})")
+    ax1.set_title("Regions that beat each baseline")
+    ax2.set_ylabel("mean over regions")
+    ax2.set_title("Mean scores on 2013–2022 season days")
+    ax1.legend(loc="upper left", fontsize=8.5)
+    fig.suptitle(f"Stage C: does the causal prior help? (full pool, restrict mode) — {verdict}",
+                 x=0.01, ha="left", fontweight="bold", fontsize=12)
+    fig.tight_layout()
+    note(ax1, f"Change with the prior: R² {d_r2:+.4f}, skill {d_skill:+.4f}. Compared only against no prior: "
+              "the random and lagged-correlation controls were not run in this pass, "
+              "so a gain cannot yet be credited to the causal graph itself.")
+    save(fig, "09_stage_c_pcmci_vs_none.png")
+
+
 def main() -> None:
     FIG.mkdir(parents=True, exist_ok=True)
     graph = load("causal_graph_50.json")
@@ -414,6 +462,8 @@ def main() -> None:
     fig_k(graph)
     fig_persistence(graph)
     fig_drift()
+    if (RES / "stage_c" / "full_pcmci_restrict.json").exists():
+        fig_stage_c()
 
 
 if __name__ == "__main__":
