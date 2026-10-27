@@ -1,0 +1,115 @@
+%AMRITA UNIVERSITY latex template...Created by Chungath, CYS-CBE%
+% Adapted for the B.Tech thesis "Causal Graph Discovery and Graph-Guided
+% Mixture-of-Experts for Climate and Regional Weather Forecasting".
+% Build:  latexmk -pdf mythesis.tex     (see README.md)
+
+\documentclass[a4paper, 12pt]{report}
+\input{preamble}
+\input{frontmatter/details}
+
+\begin{document}
+%-------------------------------------------------------------
+% title page (template layout)
+	\pagenumbering{gobble}
+	\thispagestyle{empty}
+	\begin{large}
+		\begin{center}
+			{\Large\bfseries{\ThesisTitleCaps}}\\
+			\vspace{1.3cm}
+			A Thesis \\
+			\vspace{.1cm}
+			Submitted in partial fulfilment for the Degree of\\
+			\vspace{.1cm}
+			BACHELOR OF TECHNOLOGY\\
+			\vspace{.1cm}
+            in
+            \vspace{.1cm}
+            \\ ARTIFICIAL INTELLIGENCE AND DATA SCIENCE \\
+			\vspace{1cm}
+			by\\ \vspace{0.2cm}
+			\vspace{.1cm}
+			{\Large\bfseries{\StudentA\ (\RollA)}} \\
+            {\Large\bfseries{\StudentB\ (\RollB)}} \\
+            {\Large\bfseries{\StudentC\ (\RollC)}} \\
+            {\Large\bfseries{\StudentD\ (\RollD)}} \\
+            \vspace{0.4cm}
+            Team Number: \TeamNumber
+            \vspace{2cm}
+
+			\includegraphics[scale=0.8]{univA.png}\\
+			\vfill
+			DEPARTMENT OF ARTIFICIAL INTELLIGENCE\\
+			\Large{\textbf{AMRITA VISHWA VIDYAPEETHAM}}\\
+			{\large COIMBATORE CAMPUS (INDIA)}\\
+			\vspace*{.3cm}
+			\SubmissionDate
+		\end{center}
+	\end{large}
+	\input{frontmatter/certificate}
+	\input{frontmatter/declaration}
+
+	%-----------------------------------------------------------------------------
+	\clearpage
+	\pagenumbering{roman}
+	\pagestyle{plain}
+	\input{frontmatter/acknowledgements}
+	\tableofcontents
+	\listoffigures
+	\addcontentsline{toc}{chapter}{List of Figures}
+	\listoftables
+	\addcontentsline{toc}{chapter}{List of Tables}
+	\listofalgorithms
+	\addcontentsline{toc}{chapter}{List of Algorithms}
+	\input{frontmatter/abbreviations}
+	\input{frontmatter/symbols}
+	\input{frontmatter/abstract}
+
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\pagestyle{fancy}
+\chapter{Introduction}
+\input{chapters/chapter1_introduction}
+\chapter{Literature Review and Technical Background}
+\input{chapters/chapter2_literature_review}
+\chapter{Problem Formulation, Dataset, and Preprocessing}
+\input{chapters/chapter3_problem_and_data}
+\chapter{Proposed Methodology: PCMCI and Graph Discovery}
+\input{chapters/chapter4_pcmci_methodology}
+\chapter{Graph Validation and the Graph-Guided Mixture of Experts}
+\input{chapters/chapter5_graph_validation_moe}
+\chapter{Implementation and Experimental Design}
+\input{chapters/chapter6_implementation_experiments}
+\chapter{Results and Discussion}
+\input{chapters/chapter7_results_discussion}
+\chapter{Phase 2: India-Focused Forecasting and Adaptive Experts}
+\input{chapters/chapter8_phase2_extension}
+\chapter{Conclusion and Scope for Further Research}
+\input{chapters/chapter9_conclusion}
+
+\appendix
+\chapter{Mathematical Notation and Supplementary Derivations}
+\input{appendices/appendixA_notation_derivations}
+\chapter{Configuration, Variable Dictionary, and Experiment Registry}
+\input{appendices/appendixB_configuration}
+\chapter{Reproducibility, Artifacts, and Decision Log}
+\input{appendices/appendixC_reproducibility}
+
+\clearpage
+\renewcommand{\bibname}{References}
+\bibliographystyle{ieeetr}
+\addcontentsline{toc}{chapter}{References}
+\bibliography{mybib}
+
+\chapter*{List of Publications \\ \large(Based on the Research Work)}
+\addcontentsline{toc}{chapter}{List of Publications Based on the Research Work}
+\textbf{\Large Papers Published}
+
+\noindent [None at the time of submission. Replace this line with published papers, if any.]
+
+\vspace{0.4cm}
+\noindent \textbf{\Large Papers Communicated}
+
+\noindent [None at the time of submission. Replace this line with communicated papers, if any.]
+
+\end{document}

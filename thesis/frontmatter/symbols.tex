@@ -1,0 +1,43 @@
+\chapter*{List of Symbols}
+\addcontentsline{toc}{chapter}{List of Symbols}
+\begin{longtable}{p{2.6cm}p{0.3cm}p{11.8cm}}
+$R$ & -- & Number of regions in a spatial partition ($R=50$; $R=100$ for the persistence check)\\
+$\mathcal{V}$ & -- & Set of climate variables $\{\mathrm{SST},\mathrm{h850},\mathrm{u200},\mathrm{PW},\mathrm{u850},\mathrm{OLR}\}$\\
+$N$ & -- & Number of time-series nodes, $N=R\,|\mathcal{V}|$ ($300$ at $R=50$)\\
+$i=(r,v)$ & -- & Node index: variable $v$ averaged over region $r$\\
+$X^{i}_t$ & -- & Standardised anomaly of node $i$ on day $t$\\
+$\mathbf{X}_t$ & -- & State vector $(X^{1}_t,\dots,X^{N}_t)^\top\in\R^{N}$\\
+$Y^{r}_{t}$ & -- & OLR target of region $r$ on day $t$ (equal to $X^{(r,\mathrm{OLR})}_t$)\\
+$L$ & -- & Forecast lead time in days ($L=7$ primary, $L=1$ secondary)\\
+$\tau$ & -- & Lag in days between a source and a target value\\
+$\taumin,\taumax$ & -- & Minimum and maximum lags tested by PCMCI ($1$ and $60$)\\
+$\Ttrain,\Ttest$ & -- & Development period (1979--2012) and held-out test period (2013--2022)\\
+$\Tseason$ & -- & Set of BSISO-season target days\\
+$\Pa(X^j_t)$ & -- & Set of lagged parents of $X^j_t$\\
+$\hat{\Pa}^{\mathrm{PC}}(X^j_t)$ & -- & Parent superset returned by the PC1 screening stage\\
+$\hat\rho(\cdot,\cdot\mid\cdot)$ & -- & Sample partial correlation\\
+$\MCI_{i\to j}(\tau)$ & -- & MCI partial correlation of the link $X^i_{t-\tau}\to X^j_t$ (link strength)\\
+$p,\;q$ & -- & Raw $p$-value and Benjamini--Hochberg adjusted $q$-value\\
+$\alpha_{\mathrm{PC}},\alpha_{\mathrm{FDR}}$ & -- & Significance levels of the screening stage and of the FDR control ($0.05$ each)\\
+$\mathcal{G}=(\mathcal{N},\mathcal{E})$ & -- & Lagged causal graph with node set $\mathcal{N}$ and edge set $\mathcal{E}$\\
+$e=(i,j,\tau)$ & -- & Directed lagged edge from node $i$ to target node $j$ at lag $\tau$\\
+$\tilde{X}^{d}_t$ & -- & Phase-randomised surrogate (decoy) series\\
+$D$ & -- & Number of decoys ($250$)\\
+$\delta$ & -- & Decoy rate: fraction of decoys selected as a parent of any target\\
+$d(r,r')$ & -- & Great-circle distance between the closest cells of regions $r$ and $r'$\\
+$s_e$ & -- & Implied propagation speed $d(r,r')/(\tau\,\Delta t)$ of edge $e$\\
+$s^{\max}_v$ & -- & Maximum admissible propagation speed of source variable $v$\\
+$k$ & -- & Number of outside-region edges retained per target by top-$k$ selection\\
+$\Pi_r$ & -- & Persistence score of target region $r$ across resolutions\\
+$J(A,B)$ & -- & Jaccard similarity $|A\cap B|/|A\cup B|$\\
+$\pi_r(r')$ & -- & Graph prior: strength assigned to source region $r'$ for target $r$\\
+$\mathcal{C}_r$ & -- & Candidate source-region pool of target $r$\\
+$a_{r'r}$ & -- & Splitter score of candidate edge $r'\to r$ (sigmoid output)\\
+$\rho_{\mathrm{top}}$ & -- & Fraction of candidate edges selected as causal by the splitter\\
+$\lambda$ & -- & Weight of the variance-across-interventions penalty\\
+$\beta,\;\gamma$ & -- & Graph-initialisation scale and graph-regularisation weight\\
+$S_{\mathrm{pers}}$ & -- & MSE skill score relative to persistence\\
+$R^2_{\mathrm{clim}}$ & -- & MSE skill score relative to climatology\\
+$\sigma_a$ & -- & Standard deviation of a target's mean splitter scores (discrimination measure)\\
+$\Delta_w$ & -- & Causal-signature distance between consecutive windows\\
+\end{longtable}

@@ -1,0 +1,109 @@
+% ---------------------------------------------------------------------
+% Preamble. The first block reproduces the Amrita template packages
+% exactly; the second block adds what the thesis needs (figures, tables,
+% algorithms, cross-references). See README.md for the package list.
+% ---------------------------------------------------------------------
+
+% ---- Template packages (unchanged) ----------------------------------
+\usepackage[margin=0.8in]{geometry}
+\usepackage{bold-extra}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[english]{babel}
+\usepackage[autostyle, english = american]{csquotes}
+\MakeOuterQuote{"}
+\usepackage{setspace}
+\onehalfspacing
+\graphicspath{{images/}{figures/}}
+\usepackage{amsthm}
+\usepackage{array}
+\usepackage{cite}
+\usepackage{longtable}
+\usepackage{fancyhdr}
+\usepackage{titletoc}
+\theoremstyle{definition}
+\newtheorem{Definition}{Definition}[section]
+
+% ---- Additions for this thesis ---------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{bm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage[table]{xcolor}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.misc,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\captionsetup{font=small,labelfont=bf,format=hang}
+\setlist{itemsep=2pt,topsep=4pt}
+\setlength{\headheight}{15pt}
+
+% Page style: chapter name on the left, page number on the right.
+\fancypagestyle{fancy}{%
+  \fancyhf{}%
+  \fancyhead[L]{\small\nouppercase{\leftmark}}%
+  \fancyhead[R]{\small\thepage}%
+  \renewcommand{\headrulewidth}{0.4pt}}
+\renewcommand{\chaptermark}[1]{\markboth{\chaptername\ \thechapter.\ #1}{}}
+
+\theoremstyle{definition}
+\newtheorem{Hypothesis}{Hypothesis}
+\newtheorem{Assumption}{Assumption}
+
+% Listings: plain monospace, no colour, wraps long lines.
+\lstset{basicstyle=\ttfamily\footnotesize,breaklines=true,columns=fullflexible,
+        frame=single,framerule=0.3pt,showstringspaces=false,upquote=true}
+
+% Algorithms numbered within chapters.
+\numberwithin{algorithm}{chapter}
+\renewcommand{\listalgorithmname}{List of Algorithms}
+
+% ---- Notation macros (Appendix A lists all symbols) -------------------
+\newcommand{\dg}{\ensuremath{^\circ}}
+\newcommand{\ms}{\,m\,s\ensuremath{^{-1}}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\indep}{\mathrel{\perp\!\!\!\perp}}
+\newcommand{\nindep}{\mathrel{\not\!\perp\!\!\!\perp}}
+\newcommand{\Pa}{\mathcal{P}}
+\newcommand{\Ttrain}{\mathcal{T}_{\mathrm{dev}}}
+\newcommand{\Ttest}{\mathcal{T}_{\mathrm{test}}}
+\newcommand{\Tseason}{\mathcal{S}}
+\newcommand{\taumax}{\tau_{\max}}
+\newcommand{\taumin}{\tau_{\min}}
+\newcommand{\MCI}{\hat{\rho}^{\,\mathrm{MCI}}}
+\newcommand{\var}{\operatorname{Var}}
+\newcommand{\cov}{\operatorname{Cov}}
+\newcommand{\MSE}{\operatorname{MSE}}
+\newcommand{\status}[1]{\textsc{#1}}
+
+% Small status tags used in tables.
+\newcommand{\done}{\textbf{measured}}
+\newcommand{\planned}{\textit{planned}}
+
+% TikZ styles shared by all schematic figures.
+\tikzset{
+  box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, minimum height=0.9cm, text width=2.6cm, fill=white},
+  wbox/.style={box, text width=3.6cm},
+  sbox/.style={box, text width=1.9cm, minimum height=0.7cm},
+  arr/.style={-{Stealth[length=2.2mm]}, thick},
+  darr/.style={-{Stealth[length=2.2mm]}, thick, dashed},
+  grp/.style={draw, dashed, rounded corners=4pt, inner sep=6pt},
+  lbl/.style={font=\scriptsize, align=center},
+  node0/.style={circle, draw, minimum size=6.5mm, inner sep=0pt, font=\scriptsize},
+}
