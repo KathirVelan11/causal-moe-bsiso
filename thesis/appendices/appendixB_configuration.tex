@@ -1,0 +1,145 @@
+\label{app:config}
+
+\section{Variable Dictionary}
+\label{app:vardict}
+
+\begin{small}
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{7.3cm}}
+\caption{Variable and derived-quantity dictionary.}\label{tab:vardict}\\
+\toprule
+\textbf{Name (code)} & \textbf{Definition} & \textbf{Notes} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Name (code)} & \textbf{Definition} & \textbf{Notes} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\texttt{sst} & Sea surface temperature anomaly & Region mean over ocean cells only \\
+\texttt{h850} & 850\,hPa geopotential height anomaly & Region mean over all cells \\
+\texttt{u200} & 200\,hPa zonal wind anomaly & Region mean \\
+\texttt{pw} & Precipitable water anomaly & Region mean \\
+\texttt{u850} & 850\,hPa zonal wind anomaly & Region mean; BSISO index field \\
+\texttt{olr} & Outgoing longwave radiation anomaly & Region mean; forecast target; BSISO index field \\
+\texttt{is\_ocean} & Ocean fraction of a region & Static feature appended to each feature vector \\
+Node $(r,v)$ & Standardised region mean of variable $v$ & Standardised over 1979--2012 \\
+Feature vector & 6 fields $\times$ lags $\{0,1,2,3,5,7,10\}$ + ocean fraction & 49 values per region per day \\
+BSISO amplitude & $\sqrt{\mathrm{PC1}^2+\mathrm{PC2}^2}$ & Combined OLR/u850 EOF, May--Oct 1979--2012 \\
+Season mask & Activity-based target-day set & 31-day mean amplitude $>1$ for $\ge 20$ days, $\pm 21$-day pad \\
+Ni\~{n}o-3.4 proxy & Season-mean SST, 5\dg S--5\dg N, 170\dg W--120\dg W, detrended & El Ni\~{n}o $>+0.5$\,SD; La Ni\~{n}a $<-0.5$\,SD \\
+MCI strength & $\MCI_{i\to j}(\tau)$ & Signed partial correlation \\
+Implied speed & $d(r',r)/(\tau\cdot 86{,}400\,\mathrm{s})$ & Closest-cell haversine distance \\
+Persistence score & $\Pi_r$ & Fraction of outside links reappearing at 100 regions \\
+Prior strength & $\pi_r(r')=\max|\MCI|$ & Over validated links from region $r'$ \\
+\end{longtable}
+\end{small}
+
+\section{Hyperparameter Summary}
+\label{app:hyper}
+
+Table~\ref{tab:hyper-all} collects every fixed setting of Phase~1 in one place; the stage-specific tables are Table~\ref{tab:pcmci-config} (Stage~A), Table~\ref{tab:val-config} (Stage~B) and Table~\ref{tab:hyper} (Stage~C).
+
+\begin{small}
+\renewcommand{\arraystretch}{1.15}
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{6.0cm}>{\raggedright\arraybackslash}p{5.0cm}}
+\caption{All fixed Phase~1 settings.}\label{tab:hyper-all}\\
+\toprule
+\textbf{Stage} & \textbf{Setting} & \textbf{Value} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Stage} & \textbf{Setting} & \textbf{Value} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Data & Regions / nodes & 50 / 300 (100 / 596 for B4) \\
+ & Development / test & 1979--2012 / 2013--2022 \\
+Season & Index domain & 10\dg S--30\dg N, 40\dg--160\dg E \\
+ & Search window, threshold, run, pad & 1 Apr--30 Nov; 1; 20 days; 21 days \\
+A & Lags; test; $\alpha_{\mathrm{PC}}$; $\alpha_{\mathrm{FDR}}$ & 1--60; ParCorr; 0.05; 0.05 (BH) \\
+B1 & Decoys; gate & 250; decoy rate $<30\%$ \\
+B2 & Speed limits & SST 1, OLR/PW 20, h850/u850/u200 50\ms \\
+ & Oscillation flag & $\tau\ge 25$ days \\
+B3 & $k$ range; ridge; fit/score & 0--10; $10^{-3}$; 1979--2004 / 2005--2012 \\
+B4 & Lag tolerance; pass & $\pm 2$ days; $\Pi_r\ge 0.5$ \\
+C & Epochs; samples; lr; batch & 5; 4{,}000; $10^{-3}$; 16 \\
+ & Hidden; window; swaps; $\lambda_{\max}$ & 16; 10 days; 6; 1 (30\% warm-up) \\
+ & $\rho_{\mathrm{top}}$; $\beta$; $\gamma$; seed & $\min(0.5,3/|\mathcal{C}_r|)$; 2; 1; 0 \\
+D & Windows; candidate set & 1 and 3 seasons; B1+B2 links + own OLR lags 1--3 \\
+ & Distance; detector & $1-$Jaccard of (region, field) sets; STARS \\
+\end{longtable}
+\end{small}
+
+\section{Physical-Mask Assumptions and References}
+\label{app:mask}
+
+The B2 limits (Table~\ref{tab:speeds}) rest on three bodies of evidence. The eastward speed of the intraseasonal convective envelope is about 5\ms~\cite{zhang2005mjo,lee2013realtime}. Convectively coupled Kelvin waves propagate at roughly 15--20\ms, and dry or weakly coupled Kelvin waves faster~\cite{wheeler1999convectively,kiladis2009convectively}; equatorial wave theory~\cite{matsuno1966quasi} and the Gill response~\cite{gill1980simple} explain how localised heating projects onto these waves. SST anomalies evolve through slow oceanic and air--sea processes, so a direct SST-to-target link faster than about 1\ms\ is implausible; fast atmospheric responses to SST are carried by atmospheric nodes. The limits are upper bounds chosen to be generous: a link that fails them would need a speed above any of these processes even along the shortest path.
+
+\section{Experiment Registry and Ablation Matrix}
+\label{app:registry}
+
+\begin{small}
+\renewcommand{\arraystretch}{1.15}
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.8cm}>{\raggedright\arraybackslash}p{6.4cm}>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}p{2.4cm}}
+\caption{Experiment registry. \done: results in Chapter~\ref{chap:results} or~\ref{chap:phase2}; \planned: defined, to be run.}\label{tab:registry}\\
+\toprule
+\textbf{ID} & \textbf{Experiment} & \textbf{Question} & \textbf{Status} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Experiment} & \textbf{Question} & \textbf{Status} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+E1 & BSISO index and season & Reproduce published index & \done \\
+E2 & Stage A, 50 regions & RQ1 & \done \\
+E3 & B1 decoy pass & RQ2 & \done \\
+E4 & B2 lag mask & RQ2 & \done \\
+E5 & B3 top-$k$ & RQ2 & \done \\
+E6 & Stage A at 100 regions; B4 & RQ2 & \done \\
+E7 & No prior, 3 pools, 7 d, season & Baseline & \done \\
+E8 & PCMCI restrict, full, 7 d & RQ3 & \done \\
+E9 & No prior and PCMCI restrict, full, 1 d & RQ3 & \done \\
+E10 & Stage D, 1- and 3-season windows & RQ5 & \done \\
+E11 & Alternative splitters (CIA, GSINA), region 22 & Splitter choice & \done \\
+E12 & Drift channels and lifecycle, regions 12, 22, 29 & Phase~2 groundwork & \done \\
+E13 & Random prior, restrict, full, 1 and 7 d & RQ4 & \planned \\
+E14 & Correlation prior, restrict, full, 1 and 7 d & RQ4 & \planned \\
+E15 & Graph with $\taumin=7$; rerun E8, E13, E14 & RQ3 at matched lead & \planned \\
+E16 & Top-$k$ by forecast-horizon skill or vs random & B3 sharpness & \planned \\
+E17 & Decoy strengths before FDR & B1 strength bar & \planned \\
+E18 & Initialise and regularise modes, all pools & RQ3, RQ4 & \planned \\
+E19 & 3--5 seeds for all Stage C cells & Uncertainty & \planned \\
+E20 & Full-year graph & Season specificity & \planned \\
+E21 & Persistence across development-period halves & Temporal robustness & \planned \\
+E22 & Second reanalysis / OLR product & Data-source robustness & \planned \\
+E23 & Climatology refitted on 1979--2012 & Leakage sensitivity & \planned \\
+E24 & Strength-based drift, longer windows & RQ5 & \planned \\
+E25 & Prior excluding B4-flagged links & B4 as a filter & \planned \\
+\end{longtable}
+\end{small}
+
+\section{Data Sources and Licences}
+\label{app:licences}
+
+\begin{table}[htbp]
+\centering
+\caption{Data sources. Licence terms must be confirmed with each provider before redistribution of derived data.}
+\label{tab:licences}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Source} & \textbf{Phase} & \textbf{Licence / access} \\
+\midrule
+BSISO monitoring archive (six fields) & 1 & [confirm with provider] \\
+IMDAA regional reanalysis~\cite{rani2021imdaa} & 2 & Distributed by the Indian national meteorological agencies; registration required [confirm terms] \\
+ERA5~\cite{hersbach2020era5} & 2 & Copernicus Climate Change Service licence [confirm version] \\
+NOAA ISD~\cite{smith2011integrated} & 2 & NOAA open data; WMO data-exchange restrictions may apply to some stations [confirm] \\
+\bottomrule
+\end{tabularx}
+\end{table}

@@ -1,0 +1,177 @@
+\label{chap:lit}
+
+\section{Introduction and Review Scope}
+\label{sec:lit-scope}
+
+This thesis lies at the intersection of four bodies of work that are rarely combined: the dynamics of tropical intraseasonal convection, causal discovery for multivariate time series, conditional-computation models such as the Mixture of Experts, and data-driven weather forecasting under distribution shift. Each field has its own standards of evidence. Atmospheric dynamics asks whether a relationship is physically possible; causal discovery asks whether it survives conditioning on alternative explanations; machine learning asks whether it improves out-of-sample prediction; and the drift literature asks whether it remains valid over time. The review below is organised around these questions rather than paper by paper. It closes with a comparative table (Table~\ref{tab:lit}) and a statement of the research gaps that the thesis addresses.
+
+\section{Tropical Convection and OLR}
+\label{sec:lit-olr}
+
+Deep convection in the tropics is organised on scales from individual cumulonimbus to planetary-scale envelopes. Satellite OLR has been the principal large-scale observable of this organisation since the interpolated NOAA record became available~\cite{liebmann1996description}. The physical basis of OLR as a convection proxy is the dependence of emitted infrared flux on cloud-top temperature: the colder the top, the deeper the cloud. Arkin and Meisner~\cite{arkin1987relationship} established the empirical link between cold-cloud fraction and large-scale convective rainfall, and this link underlies the use of OLR in intraseasonal indices~\cite{wheeler2004allseason,lee2013realtime}.
+
+The convection--moisture relationship gives a second physical constraint relevant to this thesis. Bretherton \emph{et al.}~\cite{bretherton2004relationships} showed that tropical oceanic precipitation rises sharply, approximately exponentially, with column water vapour once it exceeds a threshold. Precipitable water (PW) is therefore both a precursor and a consequence of convection, and its relation with OLR is expected to be strong at short lags within a region. The 850\,hPa zonal wind (u850) captures low-level moisture convergence and the westerly flow beneath active monsoon convection; the 200\,hPa zonal wind (u200) captures upper-level outflow and the large-scale baroclinic structure of the convective envelope; the 850\,hPa geopotential height (h850) captures the low-level pressure and wave response; and SST supplies the slowly varying surface boundary condition. The six Phase~1 variables were chosen because each has a documented role in the life cycle of intraseasonal convection.
+
+\section{BSISO Dynamics and Propagation}
+\label{sec:lit-bsiso}
+
+Early observational studies identified northward-moving cloud bands over India with periods of 30--50 days~\cite{yasunari1979cloudiness} and 40--50-day OLR variability in northern summer~\cite{lau1986aspects}. Wang and Xie~\cite{wang1997model} provided a theoretical model in which an equatorial Kelvin--Rossby wave packet, modified by the monsoon mean flow, produces the observed north-west to south-east tilted band and its northward movement. Jiang \emph{et al.}~\cite{jiang2004structures} attributed the northward propagation to vertical wind shear and moisture--convection feedback. Goswami and Ajaya Mohan~\cite{goswami2001intraseasonal} and Annamalai and Slingo~\cite{annamalai2001active} linked these oscillations to the active and break phases of the Indian monsoon.
+
+For monitoring and prediction, Lee \emph{et al.}~\cite{lee2013realtime} defined two indices from a multivariate EOF of OLR and u850 anomalies over 10\dg S--40\dg N, 40\dg--160\dg E in May--October. BSISO1, given by the first two principal components, describes the canonical 30--60-day northward and eastward propagating mode; BSISO2, from the third and fourth components, describes the 10--30-day mode. The first two modes explain about 10\% and 7\% of the filtered variance in their analysis, and the index is constructed without a non-causal band-pass filter by removing the mean of the preceding 120 days, which makes it usable in real time. Kikuchi \emph{et al.}~\cite{kikuchi2012bimodal} proposed a bimodal representation distinguishing the MJO-like winter mode from the BSISO summer mode. Sperber and Annamalai~\cite{sperber2008coupled} documented that coupled models struggle to reproduce BSISO propagation, which motivates statistical and data-driven approaches.
+
+Two facts from this literature shape the methodology. First, the BSISO is seasonal, so a graph estimated over all days of the year mixes summer and winter regimes. Second, its envelope propagates at a few metres per second while equatorial waves embedded in it travel faster, which sets the physical speed scales used in Chapter~\ref{chap:validation}.
+
+\section{Climate Teleconnections and Delayed Dependencies}
+\label{sec:lit-teleconnections}
+
+Teleconnections are dependencies between distant regions. Classical theory explains how a localised tropical heat source excites a Kelvin-wave response to its east and a Rossby-wave response to its west~\cite{matsuno1966quasi,gill1980simple}, and how tropical SST anomalies force extratropical wave trains~\cite{trenberth1998progress}. Wheeler and Kiladis~\cite{wheeler1999convectively} and Kiladis \emph{et al.}~\cite{kiladis2009convectively} documented convectively coupled equatorial waves in OLR spectra, with Kelvin waves travelling eastward at roughly 15--20\ms when coupled to convection and faster when dry~\cite{kiladis2009convectively}. These results matter because they establish that legitimate dependencies between regions thousands of kilometres apart can act within one or two days, and that a geographic-distance cutoff would wrongly remove them.
+
+Teleconnections also change over time. Krishna Kumar \emph{et al.}~\cite{kumar1999weakening} reported a weakening of the ENSO--Indian monsoon relationship in the late twentieth century. Any data-driven graph is therefore an estimate for a particular period, and its stability must be tested.
+
+\section{Correlation, Autocorrelation and Conditional Independence}
+\label{sec:lit-ci}
+
+Atmospheric statistics has long recognised that autocorrelation reduces the effective number of independent samples and inflates the apparent significance of correlations~\cite{wilks2011statistical,bretherton1999effective,wilks1997resampling}. Runge \emph{et al.}~\cite{runge2014quantifying} made a sharper point for lagged relationships: the lagged cross-correlation between two autocorrelated series is not a reliable estimate of either the strength or the delay of their interaction, because it mixes the coupling with the memory of each series. They proposed measures based on graphical models that condition on the past of both series.
+
+Conditional independence is the formal tool behind this idea. Two variables $X$ and $Y$ are conditionally independent given $Z$, written $X\indep Y\mid Z$, if knowing $X$ adds no information about $Y$ once $Z$ is known. Under the causal Markov and faithfulness assumptions, the conditional-independence relations among variables identify the edges of the underlying causal graph up to an equivalence class~\cite{spirtes2000causation,pearl2009causality}. For time series with only lagged links, time order fixes the edge direction, which removes much of that ambiguity~\cite{runge2018causal}. Granger causality~\cite{granger1969investigating} is the time-series special case in which $X$ "Granger-causes" $Y$ if the past of $X$ improves the prediction of $Y$ beyond the past of $Y$ and other variables; it coincides with conditional dependence on the full past under linear-Gaussian assumptions.
+
+\section{Causal Discovery in Multivariate Time Series}
+\label{sec:lit-cd}
+
+Methods for causal discovery in time series fall into four families~\cite{runge2019inferring,runge2023causal,camps2023discovering}.
+
+\paragraph{Granger and regression approaches.} Vector autoregression with significance tests, possibly with lasso regularisation~\cite{tibshirani1996regression}, estimates all lagged coefficients jointly. With 300 nodes and 60 lags there are 18{,}000 regressors per target and the regression is ill-conditioned; regularisation helps but makes the significance of individual links hard to interpret. Neural Granger causality~\cite{tank2022neural} extends the idea to nonlinear models with sparsity penalties.
+
+\paragraph{Constraint-based methods.} The PC algorithm~\cite{spirtes2000causation} removes edges by testing conditional independence with conditioning sets of increasing size. In autocorrelated time series a naive application has low power, because the strong autocorrelation of the source makes conditioning sets large and the test statistic noisy~\cite{runge2019detecting}. PCMCI addresses this; PCMCI$^+$~\cite{runge2020discovering} adds contemporaneous links, and LPCMCI~\cite{gerhardus2020high} relaxes causal sufficiency to allow latent confounders.
+
+\paragraph{Score-based and continuous-optimisation methods.} NOTEARS~\cite{zheng2018dags} recasts DAG learning as continuous optimisation with an acyclicity constraint, and DYNOTEARS~\cite{pamfil2020dynotears} extends it to time series. These methods scale with gradient-based solvers but do not provide link-level significance and are sensitive to variable scaling.
+
+\paragraph{Learned and amortised methods.} Neural relational inference~\cite{kipf2018neural} and amortised causal discovery~\cite{lowe2022amortized} train a network to infer interaction graphs from many examples of a system. They can be fast at inference time but need training data with known graphs, which do not exist for the real atmosphere.
+
+\paragraph{Nonlinear state-space methods.} Convergent cross mapping~\cite{sugihara2012detecting} detects coupling in deterministic dynamical systems, and transfer entropy~\cite{schreiber2000measuring} is an information-theoretic analogue of Granger causality. Both are attractive for nonlinear systems but are expensive and data-hungry at the scale considered here.
+
+For this thesis the decisive requirements are link-level significance with error control, explicit lags, scalability to thousands of candidates per target, and an established record in climate applications. PCMCI is the method that satisfies all four.
+
+\section{PCMCI and Related Methods in Climate Science}
+\label{sec:lit-pcmci}
+
+Runge \emph{et al.}~\cite{runge2019detecting} introduced PCMCI and showed in numerical experiments that it achieves higher detection power than PC and lasso-Granger approaches at a controlled false-positive rate, particularly for strongly autocorrelated, high-dimensional systems. Its key idea is to separate a condition-selection step (PC1), which finds a small superset of each variable's parents, from the final momentary conditional-independence (MCI) test, which conditions on the parents of both the target and the lagged source. Conditioning on the source's parents removes the influence of the source's own autocorrelation, which is the main cause of false positives and of poorly calibrated tests in climate data. The method is described in detail in Chapter~\ref{chap:pcmci}.
+
+Applications in climate science have used causal-effect networks built with PCMCI to study drivers of the winter stratospheric polar vortex~\cite{kretschmer2016using}, the tropical and mid-latitude drivers of Indian summer monsoon rainfall~\cite{dicapua2020tropical}, and the time-scale dependence of tropical--extratropical interactions in boreal summer~\cite{dicapua2020dominant}. Nowack \emph{et al.}~\cite{nowack2020causal} used causal networks among sea-level pressure modes as fingerprints to evaluate climate models. Saggioro \emph{et al.}~\cite{saggioro2020reconstructing} extended the approach to regime-dependent graphs. Tibau \emph{et al.}~\cite{tibau2022spatiotemporal} built a stochastic climate model with known teleconnections to benchmark such methods. Earlier, Ebert-Uphoff and Deng~\cite{ebert2012causal} applied constraint-based graphical models to atmospheric indices.
+
+Two features distinguish these studies from the present work. First, most target a small number of indices or a handful of dimension-reduced modes, typically tens of variables, whereas this thesis tests a full pool of 300 regional nodes at 60 lags for every target. Second, they use the graph as an end in itself, for understanding or for model evaluation, and do not test whether it improves a forecasting model under matched controls.
+
+\section{Multiple Testing, Surrogate Tests and Graph Robustness}
+\label{sec:lit-robust}
+
+\paragraph{Multiple testing.} When thousands of hypotheses are tested, a per-test threshold of 0.05 guarantees many false positives. Benjamini and Hochberg~\cite{benjamini1995controlling} introduced the false discovery rate (FDR), the expected fraction of false positives among rejections, and a step-up procedure controlling it under independence. Benjamini and Yekutieli~\cite{benjamini2001control} showed that the procedure remains valid under positive regression dependence and provided a conservative version for arbitrary dependence. In climatology, Ventura \emph{et al.}~\cite{ventura2004controlling} and Wilks~\cite{wilks2016stippling} argued that FDR control should replace naive per-gridpoint testing, which routinely overstates field significance.
+
+\paragraph{Surrogate data.} Theiler \emph{et al.}~\cite{theiler1992testing} introduced surrogate data to test a null hypothesis by generating series that share chosen properties of the data but are otherwise random. Phase-randomised surrogates preserve the power spectrum, and hence the autocorrelation function, of a series while destroying any phase relation with other series. Schreiber and Schmitz~\cite{schreiber2000surrogate} and Lancaster \emph{et al.}~\cite{lancaster2018surrogate} reviewed refinements such as amplitude-adjusted and iterated surrogates and emphasised that the validity of any surrogate test depends on whether the preserved properties match the null hypothesis of interest. Block bootstrap methods~\cite{kunsch1989jackknife,efron1993introduction} provide an alternative for autocorrelated data.
+
+\paragraph{Robustness of discovered graphs.} Causal-discovery studies typically report the sensitivity of their graphs to significance levels, lag ranges or test choice~\cite{runge2019inferring}. Using surrogate series as \emph{decoy nodes} inside the candidate pool, so that the discovery algorithm itself must reject them alongside the real candidates, is a less common check. It provides a direct empirical estimate of how often a series with realistic autocorrelation but no real coupling is selected under the full pipeline, including FDR correction. Spatial-scale robustness, testing whether links persist when the same field is aggregated differently, is rarely reported, although aggregation is known to change the dependence structure of climate fields~\cite{bretherton1999effective}.
+
+\section{Physical Constraints and Scientific Priors in Causal Discovery}
+\label{sec:lit-physics}
+
+Physical knowledge can enter causal discovery as constraints on admissible links, as priors on link probability, or as a post-hoc plausibility check. Di Capua \emph{et al.}~\cite{dicapua2020tropical} used a "theory-guided" approach in which candidate variables were chosen from prior knowledge of monsoon dynamics. Karpatne \emph{et al.}~\cite{karpatne2017theory} and Reichstein \emph{et al.}~\cite{reichstein2019deep} argued more broadly for combining physical knowledge and data-driven learning in Earth system science. A distinctive question for lagged graphs is whether the implied propagation speed of a link, the distance between source and target divided by the lag, is achievable by any physical process carried by the source variable. This turns wave-speed knowledge from equatorial dynamics~\cite{matsuno1966quasi,wheeler1999convectively,kiladis2009convectively} into a link-level test. The literature reviewed did not use it as a systematic check of a discovered graph; Chapter~\ref{chap:validation} develops it as a diagnostic.
+
+\section{Mixture-of-Experts Architectures and Gating Networks}
+\label{sec:lit-moe}
+
+The Mixture of Experts was introduced by Jacobs \emph{et al.}~\cite{jacobs1991adaptive} as a set of expert networks combined by a gating network that assigns input-dependent weights, so that each expert specialises in a region of input space. Jordan and Jacobs~\cite{jordan1994hierarchical} extended it to hierarchies trained with expectation--maximisation. In deep learning, sparsely gated MoE layers~\cite{shazeer2017outrageously}, GShard~\cite{lepikhin2021gshard} and Switch Transformers~\cite{fedus2022switch} route each token to one or a few experts, which decouples parameter count from computation; these works also documented load imbalance and the need for auxiliary balancing losses. For graphs, Graph MoE~\cite{wang2023graph} routes nodes to experts with different aggregation behaviour.
+
+In these architectures the gate is learned purely from data and is judged only by downstream loss. In the present work, the role of the gate is played by a \emph{splitter} that decides which source regions feed each target's expert. Such a splitter can be given external information about which sources are plausible, and the question of whether a causal graph is a good form of that information is the subject of Phase~1.
+
+\section{Invariant Learning and Graph Rationales}
+\label{sec:lit-invariance}
+
+Invariant causal prediction~\cite{peters2016causal} rests on the observation that the conditional distribution of a target given its causal parents is invariant across environments, whereas relations with non-causal variables can change. Invariant risk minimisation~\cite{arjovsky2019invariant} and risk extrapolation~\cite{krueger2021out} translate this into training objectives that penalise variation of the risk across environments. Wu \emph{et al.}~\cite{wu2022discovering} adapted the idea to graph neural networks as Discovering Invariant Rationales (DIR): a rationale generator splits each input graph into a causal and a non-causal subgraph, the non-causal parts are exchanged between examples to create interventional environments, and the model is trained to minimise the mean and the variance of the risk across those environments. The splitter used in this thesis adapts DIR from graph classification to spatiotemporal regression (Section~\ref{sec:moe-splitter}).
+
+\section{Graph-Guided Learning and Structured Predictor Selection}
+\label{sec:lit-graph}
+
+Graph neural networks~\cite{kipf2017semi,battaglia2018relational} propagate information along a given graph and are widely used for spatiotemporal forecasting, for example in traffic~\cite{li2018diffusion}. When no graph is given, models such as MTGNN~\cite{wu2020connecting} learn an adjacency matrix jointly with the forecaster. Learned adjacencies optimise prediction but are not tested for statistical credibility, and fixed geographic adjacencies are credible but may omit remote influences. Structured sparsity methods such as the lasso~\cite{tibshirani1996regression} select predictors by penalised fitting. A causal graph offers a third option: a sparse, explicitly tested, lag-resolved candidate structure that is fixed before training. Whether it helps is an empirical question, and the answer may depend on how the graph enters the model: as a hard restriction, as an initialisation, or as a soft penalty.
+
+\section{Machine Learning for Weather Forecasting}
+\label{sec:lit-mlwp}
+
+Data-driven global weather models have advanced rapidly. WeatherBench~\cite{rasp2020weatherbench} and WeatherBench~2~\cite{rasp2024weatherbench2} provide common evaluation protocols. Keisler~\cite{keisler2022forecasting} showed that a graph neural network can produce competitive multi-day global forecasts; FourCastNet~\cite{pathak2022fourcastnet}, Pangu-Weather~\cite{bi2023accurate} and GraphCast~\cite{lam2023learning} matched or exceeded deterministic operational NWP on many variables and lead times; GenCast~\cite{price2025probabilistic} extended this to probabilistic ensemble forecasting; and ECMWF has deployed a data-driven system, AIFS~\cite{lang2024aifs}. Ben~Bouall\`egue \emph{et al.}~\cite{benbouallegue2024rise} assessed such models in an operational-like setting, and Schultz \emph{et al.}~\cite{schultz2021can} discussed the conditions under which deep learning could replace NWP. Oskarsson \emph{et al.}~\cite{oskarsson2023graph} adapted graph-based neural forecasting to limited-area domains, which is directly relevant to the regional focus of Phase~2.
+
+These models are trained on reanalyses such as ERA5~\cite{hersbach2020era5} and are evaluated mainly at medium range. Their inputs are entire global states, and the dependence between regions is learned implicitly. They neither expose a tested statement of which remote regions drive a given target nor adapt to changes in such dependence. The present work does not compete with them on scale; it studies a complementary question about explicit, validated source selection.
+
+\section{Distribution Shift, Regime Detection and Online Adaptation}
+\label{sec:lit-drift}
+
+Machine-learning models assume that training and deployment data share a distribution; when the joint distribution of inputs and targets changes, performance degrades~\cite{quinonero2009dataset}. In the streaming setting this is called concept drift~\cite{gama2014survey,lu2019learning}. Detectors such as CUSUM~\cite{page1954continuous} and ADWIN~\cite{bifet2007learning} monitor an error or statistic stream and signal when its distribution changes. In climatology, Rodionov's sequential t-test analysis of regime shifts (STARS)~\cite{rodionov2004sequential} detects shifts in the mean of a time series as they occur, with prewhitening to handle autocorrelation~\cite{rodionov2006use}.
+
+Adapting to drift raises the problem of catastrophic forgetting~\cite{kirkpatrick2017overcoming}. Progressive networks~\cite{rusu2016progressive} and Expert Gate~\cite{aljundi2017expert} avoid forgetting by adding new modules or experts rather than overwriting old ones, and route inputs to the most relevant expert. For climate forecasting, regimes such as ENSO phases recur, which suggests archiving experts and reactivating them when a familiar regime returns. A detector based on forecast error reacts only after skill has degraded; a detector based on the causal structure itself could in principle react earlier, but only if the estimated structure is stable enough between windows that real changes stand out from sampling noise. That condition is tested in Stage~D.
+
+\section{Related Datasets and Benchmarks}
+\label{sec:lit-data}
+
+The interpolated OLR record~\cite{liebmann1996description} and atmospheric reanalyses are the standard sources for BSISO research. ERA5~\cite{hersbach2020era5} provides hourly global fields at about 31\,km from 1940 onward. For India, the IMDAA regional reanalysis~\cite{rani2021imdaa} provides hourly fields at about 12\,km for the satellite era. The NOAA Integrated Surface Database~\cite{smith2011integrated} provides hourly station observations worldwide, including Indian stations. WeatherBench~2~\cite{rasp2024weatherbench2} is the most widely used benchmark for global data-driven models. These datasets are the basis of the Phase~2 design (Chapter~\ref{chap:phase2}).
+
+\section{Comparative Summary of Related Work}
+\label{sec:lit-table}
+
+Table~\ref{tab:lit} compares representative works along the dimensions that matter for this thesis: whether the method discovers lagged structure, whether that structure is validated independently, whether it is used in a forecasting model, and whether the method addresses temporal change.
+
+\begin{small}
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{3.3cm}>{\centering\arraybackslash}p{1.15cm}>{\centering\arraybackslash}p{1.15cm}>{\centering\arraybackslash}p{1.15cm}>{\centering\arraybackslash}p{1.15cm}>{\raggedright\arraybackslash}p{2.9cm}}
+\caption{Comparison of related work. Columns: \textbf{Lag} = discovers explicit lagged dependencies; \textbf{Val.} = validates the discovered structure with an independent check; \textbf{Fcst.} = uses the structure in a forecasting model; \textbf{Drift} = addresses temporal change. \checkmark\ = yes; $\circ$ = partly; -- = no.}\label{tab:lit}\\
+\toprule
+\textbf{Work} & \textbf{Approach} & \textbf{Lag} & \textbf{Val.} & \textbf{Fcst.} & \textbf{Drift} & \textbf{Relevance / gap} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Work} & \textbf{Approach} & \textbf{Lag} & \textbf{Val.} & \textbf{Fcst.} & \textbf{Drift} & \textbf{Relevance / gap} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Granger~\cite{granger1969investigating} & Predictive causality via regression & \checkmark & -- & $\circ$ & -- & Foundational; no control for common drivers beyond included variables \\
+Runge et al.~\cite{runge2014quantifying} & Graph-based coupling measures & \checkmark & -- & -- & -- & Shows lagged correlation is ambiguous in climate data \\
+Runge et al.~\cite{runge2019detecting} & PCMCI & \checkmark & $\circ$ & -- & -- & Core method; validated on synthetic systems \\
+Runge~\cite{runge2020discovering} & PCMCI$^+$ & \checkmark & $\circ$ & -- & -- & Adds lag-0 links; not needed for forecasting \\
+Gerhardus \& Runge~\cite{gerhardus2020high} & LPCMCI & \checkmark & $\circ$ & -- & -- & Handles latent confounders; higher cost \\
+Kretschmer et al.~\cite{kretschmer2016using} & Causal effect networks & \checkmark & $\circ$ & $\circ$ & -- & Climate drivers from a few indices \\
+Di Capua et al.~\cite{dicapua2020tropical} & Theory-guided CEN, monsoon & \checkmark & $\circ$ & -- & -- & Monsoon drivers; small variable set \\
+Saggioro et al.~\cite{saggioro2020reconstructing} & Regime-dependent PCMCI & \checkmark & $\circ$ & -- & \checkmark & Regime-specific graphs; known regimes \\
+Nowack et al.~\cite{nowack2020causal} & Causal fingerprints & \checkmark & $\circ$ & -- & -- & Uses graphs to evaluate models \\
+Tank et al.~\cite{tank2022neural} & Neural Granger & \checkmark & -- & $\circ$ & -- & Nonlinear; no link-level error control \\
+Pamfil et al.~\cite{pamfil2020dynotears} & DYNOTEARS & \checkmark & -- & -- & -- & Scalable; no significance testing \\
+Kipf et al.~\cite{kipf2018neural} & NRI & $\circ$ & -- & \checkmark & -- & Learned interactions; needs graph-labelled data \\
+Wu et al.~\cite{wu2022discovering} & DIR-GNN rationales & -- & $\circ$ & -- & -- & Invariance-trained selection; adapted here \\
+Shazeer et al.~\cite{shazeer2017outrageously} & Sparse MoE & -- & -- & \checkmark & -- & Data-learned gating only \\
+Wang et al.~\cite{wang2023graph} & Graph MoE & -- & -- & \checkmark & -- & Experts on graphs; no causal prior \\
+Wu et al.~\cite{wu2020connecting} & MTGNN learned graph & $\circ$ & -- & \checkmark & -- & Learned adjacency not tested for credibility \\
+Lam et al.~\cite{lam2023learning} & GraphCast & -- & -- & \checkmark & -- & Global ML NWP; implicit dependence \\
+Price et al.~\cite{price2025probabilistic} & GenCast & -- & -- & \checkmark & -- & Probabilistic ML NWP \\
+Oskarsson et al.~\cite{oskarsson2023graph} & Limited-area graph NWP & -- & -- & \checkmark & -- & Regional ML forecasting \\
+Rodionov~\cite{rodionov2004sequential} & STARS & -- & -- & -- & \checkmark & Regime-shift test used in Stage~D \\
+Bifet \& Gavald\`a~\cite{bifet2007learning} & ADWIN & -- & -- & $\circ$ & \checkmark & Error-stream drift detection \\
+Aljundi et al.~\cite{aljundi2017expert} & Expert Gate & -- & -- & \checkmark & \checkmark & Adding experts without forgetting \\
+\midrule
+\textbf{This thesis} & PCMCI + four checks + graph prior in MoE + structural drift & \checkmark & \checkmark & \checkmark & \checkmark & Tests credibility and usefulness separately under matched controls \\
+\end{longtable}
+\end{small}
+
+\section{Research Gaps and Positioning}
+\label{sec:lit-gaps}
+
+The comparison identifies four gaps that this thesis addresses.
+
+\begin{enumerate}[label=\textbf{G\arabic*.}]
+  \item \textbf{Scale of the candidate pool.} Climate applications of PCMCI typically use tens of pre-selected indices or modes. Running PCMCI over a full pool of 300 regional nodes at 60 lags for every target, without pre-selecting variables by hypothesis, has practical cost and statistical-power implications that have not been documented for intraseasonal OLR.
+  \item \textbf{Independent validation of the discovered graph.} Studies report sensitivity to parameters, but a fixed sequence of checks that can each fail, combining decoys inside the discovery pool, a propagation-speed test, data-driven sparsification and persistence across spatial resolution, is not standard practice.
+  \item \textbf{Credibility versus usefulness.} Causal graphs in climate science are used for understanding or model evaluation; MoE gates and learned adjacencies in machine learning are judged only by loss. No study among those reviewed tests whether a validated causal graph improves a forecaster's source selection against matched random and correlation priors.
+  \item \textbf{Causal structure as a drift signal.} Drift detectors watch error streams, and regime-dependent causal discovery assumes regimes are known. Whether sliding-window changes in an estimated causal structure align with known climate regimes, and could therefore trigger expert adaptation, is an open empirical question.
+\end{enumerate}
+
+The thesis is positioned as an applied methodological study. Its novelty lies not in a new discovery algorithm but in the protocol connecting discovery, validation and forecasting use, in the scale at which the protocol is applied, and in reporting the outcome honestly whichever way it falls.
+
+\section{Chapter Summary}
+\label{sec:lit-summary}
+
+This chapter reviewed the physical basis of OLR and the BSISO, the reasons why correlation is an unreliable guide to lagged dependence in climate data, the main families of causal-discovery methods and the reasons for choosing PCMCI, the statistical tools for multiple testing and surrogate validation, the Mixture-of-Experts and invariant-learning literature on which the forecasting model builds, recent machine-learning weather models, and drift detection. It identified four gaps. The next chapter formalises the forecasting problem and the data.

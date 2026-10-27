@@ -1,0 +1,220 @@
+\label{chap:pcmci}
+
+\section{Overview of the Causal-Discovery Pipeline}
+\label{sec:pcmci-overview}
+
+Stage~A turns the 300-node state matrix into a lagged graph whose edges point into the 50 OLR targets. Figure~\ref{fig:pcmci-pipeline} shows the sequence. For each target, a lagged design matrix is built from the season target days of the development period; the PC1 stage screens the 18{,}000 candidates down to a small superset of parents; the MCI stage retests each survivor while conditioning on the parents of both the target and the source; and the Benjamini--Hochberg procedure controls the false discovery rate over all candidates of that target. The output is a list of links, each with a source node, a lag, a signed strength and an adjusted $q$-value.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.35cm and 0.42cm]
+\node[box] (X) {State matrix $\mathbf{X}$\\$T\times 300$};
+\node[box, right=of X] (S) {Season target days\\$t\in\Tseason\cap\Ttrain$\\(7{,}153 days)};
+\node[box, right=of S] (D) {Lagged design\\18{,}000 columns\\per target};
+\node[box, right=of D, fill=blue!6] (PC) {\textbf{PC1}\\iterative\\screening};
+\node[box, below=0.9cm of PC, fill=blue!6] (MCI) {\textbf{MCI}\\condition on\\$\hat\Pa(X^j_t)$ and $\hat\Pa(X^i_{t-\tau})$};
+\node[box, left=of MCI, fill=blue!6] (FDR) {\textbf{BH-FDR}\\$q\le 0.05$\\over 18{,}000 tests};
+\node[box, left=of FDR] (G) {Links $(i,\tau,\MCI,q)$\\into target $j$};
+\node[box, left=of G] (Gall) {Graph $\mathcal{G}$\\50 targets};
+\draw[arr] (X) -- (S); \draw[arr] (S) -- (D); \draw[arr] (D) -- (PC);
+\draw[arr] (PC) -- node[lbl,right]{parent\\superset} (MCI);
+\draw[arr] (MCI) -- (FDR); \draw[arr] (FDR) -- (G); \draw[arr] (G) -- (Gall);
+\node[lbl, below=0.1cm of PC.south east, anchor=north west] {};
+\end{tikzpicture}
+\caption{Stage~A pipeline. For each OLR target node $j$, PC1 screens 18{,}000 lagged candidates down to a parent superset; MCI retests every survivor conditioned on the parents of both target and source; Benjamini--Hochberg correction controls the FDR over all candidates of the target. Only development-period season days are used.}
+\label{fig:pcmci-pipeline}
+\end{figure}
+
+\section{Graph Notation and Node Definitions}
+\label{sec:pcmci-notation}
+
+We assume that the standardised node series follow a lagged structural model
+\begin{equation}
+  X^{j}_t = g_j\!\left(\Pa(X^j_t),\,\eta^j_t\right),\qquad j=1,\dots,N,
+  \label{eq:scm}
+\end{equation}
+where $\Pa(X^j_t)\subseteq\{X^{i}_{t-\tau}: i=1,\dots,N;\;\tau=1,\dots,\taumax\}$ is the set of lagged parents of $X^j_t$, $g_j$ is a function, and the noise terms $\eta^j_t$ are mutually independent and independent of the past. The associated time-series graph $\mathcal{G}$ has a node for every pair $(i,t)$ and a directed edge $X^i_{t-\tau}\to X^j_t$ whenever $X^i_{t-\tau}\in\Pa(X^j_t)$. Under stationarity the edge set is the same for every $t$, so $\mathcal{G}$ is summarised by the set of lagged links
+\begin{equation}
+  \mathcal{E}=\big\{(i,j,\tau): X^{i}_{t-\tau}\in\Pa(X^j_t)\big\}.
+\end{equation}
+In this thesis only the parents of the 50 OLR nodes are estimated; the parents of the other 250 nodes are needed only as conditioning sets in the MCI stage.
+
+\section{Conditional-Independence Foundations}
+\label{sec:pcmci-ci}
+
+\subsection{Why correlation is insufficient}
+Consider three cases in which $X^i_{t-\tau}$ and $X^j_t$ are correlated although $X^i$ has no direct influence on $X^j$:
+\begin{itemize}
+  \item \textbf{Autocorrelation and indirect paths.} If $X^i_{t-\tau-1}\to X^j_t$ is a true link and $X^i$ is autocorrelated, then $X^i_{t-\tau}$ is also correlated with $X^j_t$. The lagged correlation function of an autocorrelated source is smeared over many lags~\cite{runge2014quantifying}.
+  \item \textbf{Common driver.} If $X^k_{t-5}\to X^i_{t-3}$ and $X^k_{t-5}\to X^j_t$, then $X^i_{t-3}$ and $X^j_t$ are correlated at lag 3 without any link between them. In the tropics, an active BSISO phase is such a driver for many regions simultaneously.
+  \item \textbf{Mediated path.} If $X^i_{t-2}\to X^m_{t-1}\to X^j_t$, then $X^i_{t-2}$ is correlated with $X^j_t$ but has no direct link to it.
+\end{itemize}
+In each case the spurious dependence disappears once the right variables are conditioned on: the source's own past in the first case, the common driver in the second, the mediator in the third. Conditional independence is the formal statement of this idea.
+
+\subsection{Conditional independence and its testing}
+$X\indep Y\mid\mathbf{Z}$ holds if $p(x\mid y,\mathbf{z})=p(x\mid\mathbf{z})$. Under the causal Markov condition, a variable is independent of its non-descendants given its parents; under faithfulness, every conditional independence in the data is implied by the graph structure~\cite{spirtes2000causation,pearl2009causality}. Together, and assuming causal sufficiency (no unobserved common drivers among the included nodes), they imply that for lagged links
+\begin{equation}
+  X^{i}_{t-\tau}\in\Pa(X^j_t)\iff X^{i}_{t-\tau}\nindep X^j_t\;\big|\;\mathbf{X}^{-}_t\setminus\{X^{i}_{t-\tau}\},
+  \label{eq:fullci}
+\end{equation}
+where $\mathbf{X}^{-}_t$ is the entire past of the system up to lag $\taumax$~\cite{runge2018causal}. Equation~\eqref{eq:fullci} cannot be tested directly with 18{,}000 conditioning variables and 7{,}153 samples. PCMCI tests an equivalent condition with much smaller conditioning sets.
+
+\subsection{The partial-correlation test (ParCorr)}
+The conditional-independence test used throughout is partial correlation, which is exact for linear-Gaussian dependence. Given samples of $X$, $Y$ and a conditioning set $\mathbf{Z}$ of dimension $|\mathbf{Z}|$, the residuals of $X$ and $Y$ after least-squares regression on $\mathbf{Z}$ are
+\begin{equation}
+  r_X = (\mathbf{I}-\mathbf{Q}\mathbf{Q}^{\top})\,\mathbf{x},\qquad r_Y = (\mathbf{I}-\mathbf{Q}\mathbf{Q}^{\top})\,\mathbf{y},
+  \label{eq:resid}
+\end{equation}
+where $\mathbf{Q}$ is an orthonormal basis of the column space of the conditioning matrix $\mathbf{Z}$ (obtained by QR decomposition). The partial correlation and its test statistic are
+\begin{equation}
+  \hat\rho(X,Y\mid\mathbf{Z}) = \frac{r_X^{\top}r_Y}{\lVert r_X\rVert\,\lVert r_Y\rVert},\qquad
+  t = \hat\rho\sqrt{\frac{n-2-|\mathbf{Z}|}{1-\hat\rho^{2}}},
+  \label{eq:parcorr}
+\end{equation}
+and under the null hypothesis $\rho=0$ the statistic $t$ follows a Student-$t$ distribution with $n-2-|\mathbf{Z}|$ degrees of freedom, giving a two-sided $p$-value $p=2\,\Pr(T_{n-2-|\mathbf{Z}|}>|t|)$. ParCorr detects only linear dependence; nonlinear alternatives such as conditional mutual information are discussed in Section~\ref{sec:pcmci-assumptions}.
+
+\section{PCMCI Stage 1: PC1 Parent Screening}
+\label{sec:pcmci-pc1}
+
+The PC1 stage estimates, for each target $X^j_t$, a superset $\hat\Pa(X^j_t)$ of its parents with as few false negatives as possible. It is a variant of the PC algorithm's skeleton phase in which, at each iteration $p$, every candidate is tested against only the $p$ strongest other candidates rather than against all subsets of size $p$:
+\begin{enumerate}
+  \item Initialise $\hat\Pa^{(0)}$ with all 18{,}000 candidates $X^{i}_{t-\tau}$ and set $p=0$.
+  \item For every candidate $X^{i}_{t-\tau}\in\hat\Pa^{(p)}$, let $\mathbf{S}_p$ be the $p$ strongest members of $\hat\Pa^{(p)}\setminus\{X^{i}_{t-\tau}\}$, ranked by the smallest absolute test statistic recorded for them so far. Test
+  \begin{equation}
+    H_0:\; X^{i}_{t-\tau}\indep X^j_t\mid\mathbf{S}_p
+  \end{equation}
+  and remove the candidate if $p>\alpha_{\mathrm{PC}}$. Record the minimum absolute partial correlation of each surviving candidate across iterations.
+  \item Set $p\leftarrow p+1$ and repeat while $|\hat\Pa^{(p)}|-1\ge p$.
+\end{enumerate}
+Ordering conditions by strength means that strong drivers, including the target's own recent past, are conditioned on first, which removes most autocorrelation-induced and indirect candidates in the first few iterations. Restricting to one conditioning combination per iteration ($\max$ combinations $=1$, as recommended for high-dimensional climate data~\cite{runge2019detecting}) keeps the cost linear in the number of candidates. The significance level $\alpha_{\mathrm{PC}}=0.05$ is deliberately liberal: false positives at this stage are tolerated because MCI tests every survivor again.
+
+The PC1 stage is also run for each non-target node, but with its candidates restricted to the node's own past (lags 1--60). The resulting sets $\hat\Pa(X^i_t)$ describe the autocorrelation structure of each source and are used only as conditions in the MCI stage. When the source is itself one of the 50 OLR targets, its full PC1 parent set, which may include other nodes, is used as its condition. This restriction is a modelling choice: it conditions each source on its own memory, which addresses autocorrelation, the most important source of false positives, without estimating a full graph for all 300 nodes. Its consequence for common drivers is discussed in Section~\ref{sec:pcmci-assumptions}.
+
+\section{PCMCI Stage 2: Momentary Conditional Independence}
+\label{sec:pcmci-mci}
+
+The MCI test checks each survivor $X^{i}_{t-\tau}\in\hat\Pa(X^j_t)$ by conditioning on the parents of the target \emph{and} on the parents of the source, shifted by the lag:
+\begin{equation}
+  \mathrm{MCI}:\quad X^{i}_{t-\tau}\indep X^{j}_{t}\;\Big|\;\hat\Pa(X^j_t)\setminus\{X^{i}_{t-\tau}\},\;\hat\Pa(X^{i}_{t-\tau}),
+  \label{eq:mci}
+\end{equation}
+where $\hat\Pa(X^{i}_{t-\tau})=\{X^{k}_{t-\tau-s}: X^{k}_{t-s}\in\hat\Pa(X^i_t)\}$. The test statistic is the partial correlation of Eq.~\eqref{eq:parcorr} with this conditioning set, and its value is the link's \emph{MCI strength}:
+\begin{equation}
+  \MCI_{i\to j}(\tau) = \hat\rho\Big(X^{i}_{t-\tau},\,X^{j}_{t}\;\Big|\;\hat\Pa(X^j_t)\setminus\{X^{i}_{t-\tau}\},\,\hat\Pa(X^{i}_{t-\tau})\Big).
+  \label{eq:mcistrength}
+\end{equation}
+Conditioning on the target's parents removes indirect paths and common drivers that are among the target's parents. Conditioning on the source's own parents removes the source's autocorrelation, so that the test measures the \emph{momentary} information that the source contributes at lag $\tau$ beyond its own history~\cite{runge2019detecting}. This conditioning has two practical effects. First, it calibrates the test: without it, the false-positive rate of a test between two strongly autocorrelated series is far above the nominal level. Second, it sharpens the lag: an autocorrelated source no longer appears at many neighbouring lags. As a result, $\MCI$ values are generally smaller than raw correlations and are interpretable as a normalised measure of the direct lagged coupling, given the conditioning sets.
+
+\subsection{Significance and effect size}
+A small $p$-value indicates that a link is unlikely to be zero, not that it is strong. With 7{,}153 samples, a partial correlation of $0.05$ is significant at conventional levels. For this reason, the graph records both the $q$-value (Section~\ref{sec:pcmci-fdr}) and the MCI strength, and later stages rank links by $|\MCI|$, not by significance (Section~\ref{sec:val-b3}).
+
+\section{Lag Range and Candidate Source Pool}
+\label{sec:pcmci-lags}
+
+The candidate pool is the full set of 300 nodes, so that local and remote sources, and all six variables, are eligible for every target. Restricting the pool by geography would rule out teleconnections; restricting it by variable would encode hypotheses that the analysis should test. The lag range is $\taumin=1$ to $\taumax=60$ days. The upper bound covers a full BSISO cycle of 30--60 days, so that precursors one cycle ahead, and slow SST-mediated influences, are eligible. Lag 0 is excluded so that every link points forward in time.
+
+The choice of $\taumin$ has a direct consequence for forecasting. A link at lag $\tau$ is usable for a forecast at lead $L$ only if $\tau\ge L$ (Section~\ref{sec:moe-availability}). With $\taumin=1$ the graph describes all lagged dependencies, most of which, as Chapter~\ref{chap:results} shows, act at one or two days. A graph intended specifically for seven-day forecasting would set $\taumin=L=7$, so that only links usable at that lead are tested; this variant is part of the future-work programme.
+
+\section{Statistical Testing and Multiple-Testing Correction}
+\label{sec:pcmci-fdr}
+
+Each target involves 18{,}000 hypotheses. At $\alpha=0.05$ without correction, roughly 900 false positives per target would be expected even if no link existed. The Benjamini--Hochberg (BH) procedure~\cite{benjamini1995controlling} controls the false discovery rate, the expected proportion of false links among the selected links:
+\begin{equation}
+  \mathrm{FDR} = \E\!\left[\frac{V}{\max(S,1)}\right],
+\end{equation}
+where $S$ is the number of selected links and $V$ the number of false ones. For the $m=18{,}000$ $p$-values of a target, sorted as $p_{(1)}\le\dots\le p_{(m)}$, the adjusted $q$-values are
+\begin{equation}
+  q_{(h)} = \min_{h'\ge h}\;\min\!\left(1,\;\frac{m}{h'}\,p_{(h')}\right),
+  \label{eq:bh}
+\end{equation}
+and a link is retained if $q\le\alpha_{\mathrm{FDR}}=0.05$. Candidates removed by PC1 are counted with $p=1$, so that the correction is applied over the full set of 18{,}000 hypotheses per target rather than only over the survivors; this is conservative. BH control is guaranteed under independence and under positive regression dependence of the test statistics~\cite{benjamini2001control}, which is the typical case for positively correlated climate tests~\cite{ventura2004controlling}. It is applied per target, so the FDR statement holds for each target's link set.
+
+\section{Graph Construction and Edge Representation}
+\label{sec:pcmci-edges}
+
+Each retained link is stored as a record
+\begin{equation}
+  e = \big(r_{\mathrm{src}},\, v_{\mathrm{src}},\, \tau,\, \MCI,\, p,\, q\big)
+\end{equation}
+attached to its target region $r$, where $(r_{\mathrm{src}},v_{\mathrm{src}})$ identifies the source node. Links whose source region equals the target region ($r_{\mathrm{src}}=r$) are \emph{own-region} links, which include the target's own OLR history; the others are \emph{outside} links. The distinction matters because own-region information is always available to the forecaster, whereas outside links are the information that the graph adds. Subsequent stages attach validation flags, distances and implied speeds to each record (Chapter~\ref{chap:validation}).
+
+\section{Computational Considerations}
+\label{sec:pcmci-compute}
+
+The reference implementation of PCMCI in the Tigramite package builds a new data array for every conditional-independence test. With 18{,}000 candidates per target, several PC1 iterations and 50 targets, this becomes the bottleneck. The implementation developed for this thesis exploits the structure of the problem:
+\begin{enumerate}
+  \item \textbf{Shared lagged design matrix.} The $n\times 18{,}000$ matrix of all lagged, standardised candidate columns on the season target days is built once and shared by all 50 targets.
+  \item \textbf{Batched screening.} At PC1 iteration $p$, all candidates that are conditioned on the same set are tested in one batched projection: the conditioning matrix is orthonormalised once by QR decomposition, all candidate columns are residualised by a single matrix product $\mathbf{X}_C-\mathbf{Q}(\mathbf{Q}^{\top}\mathbf{X}_C)$, and the partial correlations of Eq.~\eqref{eq:parcorr} are computed for all of them at once. Candidates whose strongest-$p$ conditioning set differs because they themselves are among the strongest are handled separately.
+  \item \textbf{Chunking.} Columns are processed in chunks of 4{,}096 to bound memory.
+\end{enumerate}
+The cost of one batched test is $O(n\,m\,p)$ for $m$ candidates and $p$ conditions, compared with $O(m)$ separate $O(n\,p^{2})$ tests. Correctness is established by testing the implementation link-for-link against Tigramite (Section~\ref{sec:impl-pcmci}). Algorithm~\ref{alg:pcmci} summarises the procedure.
+
+\begin{algorithm}[htbp]
+\caption{Vectorised PCMCI for one OLR target (Stage A)}
+\label{alg:pcmci}
+\small
+\begin{algorithmic}[1]
+\Require Node series $\mathbf{X}\in\R^{T\times N}$; season target days $\mathcal{R}\subset\Ttrain$ with $\min\mathcal{R}\ge 2\taumax$; target node $j$; $\taumin,\taumax,\alpha_{\mathrm{PC}},\alpha_{\mathrm{FDR}}$
+\Ensure Links $\{(i,\tau,\MCI,p,q)\}$ into $X^j$
+\State Build lagged design $\mathbf{D}\in\R^{|\mathcal{R}|\times N(\taumax-\taumin+1)}$, column $(i,\tau)$ = standardised $X^i_{t-\tau}$, $t\in\mathcal{R}$ \Comment{shared by all targets}
+\State $y\gets$ standardised $X^j_t$, $t\in\mathcal{R}$
+\State $C\gets$ all columns; $s_c\gets+\infty$ for all $c$; $p\gets 0$ \Comment{PC1 screening}
+\While{$|C|-1\ge p$}
+  \State $\mathbf{S}\gets$ the $p$ columns of $C$ with largest $s_c$
+  \State $\mathbf{Q}\gets\mathrm{QR}(\mathbf{D}_{\mathbf{S}})$; residualise $y$ and $\mathbf{D}_{C}$ on $\mathbf{Q}$ \Comment{one batched projection}
+  \State compute $\hat\rho_c$ and $p_c$ for all $c\in C$ (Eq.~\ref{eq:parcorr}); retest separately the $c\in\mathbf{S}$ with $\mathbf{S}\setminus\{c\}$ plus the next strongest
+  \State $s_c\gets\min(s_c,|\hat\rho_c|)$; \; $C\gets\{c\in C: p_c\le\alpha_{\mathrm{PC}}\}$; \; $p\gets p+1$
+\EndWhile
+\State $\hat\Pa(X^j)\gets C$ ordered by $s_c$
+\ForAll{$(i,\tau)\in\hat\Pa(X^j)$} \Comment{MCI stage}
+  \State $\mathbf{Z}\gets\big(\hat\Pa(X^j)\setminus\{(i,\tau)\}\big)\cup\{(k,\tau+s):(k,s)\in\hat\Pa(X^i)\}$ \Comment{$\hat\Pa(X^i)$: own-past parents of source}
+  \State $(\MCI_{i\to j}(\tau),p_{i,\tau})\gets\mathrm{ParCorr}\big(X^i_{t-\tau},X^j_t\mid\mathbf{Z}\big)$
+\EndFor
+\State $p\gets 1$ for all candidates removed by PC1; compute $q$ by BH over all $N(\taumax-\taumin+1)$ candidates (Eq.~\ref{eq:bh})
+\State \Return links with $q\le\alpha_{\mathrm{FDR}}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Assumptions and Limitations}
+\label{sec:pcmci-assumptions}
+
+PCMCI's guarantees hold under assumptions that are only approximately satisfied by regional climate data. Table~\ref{tab:assumptions} lists them, how they may fail here, and how the failure would show.
+
+\begin{table}[htbp]
+\centering
+\caption{Assumptions of PCMCI with ParCorr, how they may be violated by regional climate data, and the expected symptom.}
+\label{tab:assumptions}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Assumption} & \textbf{Possible violation} & \textbf{Symptom} \\
+\midrule
+Causal sufficiency & BSISO phase, ENSO, extratropical forcing and unresolved moisture processes are only partly represented by 300 regional nodes & Links from a node that shares an unobserved driver with the target \\
+Stationarity & Season-to-season and interannual changes in dependence; long-term trends & Links that hold in some years but not others (tested in Stage D) \\
+Linearity & Threshold behaviour of convection with moisture~\cite{bretherton2004relationships} & Missed nonlinear links; diluted strengths \\
+Faithfulness & Cancelling pathways; near-deterministic relations between fields of one region & Missed links; unstable choice between redundant fields \\
+No contemporaneous links & Fast processes acting within one day & Same-day effects appear at lag 1 or are missed \\
+Appropriate scale & Region means mix different processes; boundaries chosen by OLR clustering & Links that depend on the partition (tested by B4) \\
+Gaussian test calibration & Heavy tails and skewness of OLR anomalies & $p$-values slightly miscalibrated \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Temporal order is not causal direction.} Excluding lag 0 guarantees that every link points forward in time, but not that the source causes the target. If an unobserved driver $U$ affects the source at $t-5$ and the target at $t$, the source at $t-5$ will be dependent on the target at $t$ even after conditioning on all observed parents. The link will be correctly directed in time and still spurious. LPCMCI~\cite{gerhardus2020high} can represent such latent confounding, at a higher computational cost and with a more complex output.
+
+\paragraph{Restricted source conditioning.} Because non-target sources are conditioned only on their own past, a common driver that acts on the source through another node is removed only if it also appears among the target's parents. This is a deliberate trade-off between computational cost and confounding control, and it is one reason why the validation checks of Chapter~\ref{chap:validation} are needed.
+
+\paragraph{Statistical power.} With 18{,}000 candidates per target, strongly autocorrelated data and FDR control, weak but real links can be missed, and some false links will remain. The FDR guarantee concerns the expected proportion, not each individual link.
+
+\paragraph{Redundant fields within a region.} The six fields of a region move together with the same wave. When two fields carry nearly the same information, PCMCI may select one or the other depending on small sampling differences. Claims about which \emph{field} drives a target are therefore weaker than claims about which \emph{region} does, and the forecasting prior is defined at the region level (Section~\ref{sec:moe-prior}).
+
+\section{Reproducibility and Implementation Decisions}
+\label{sec:pcmci-repro}
+
+The Stage~A configuration is fixed and recorded with its outputs (Table~\ref{tab:pcmci-config} in Chapter~\ref{chap:experiments}): ParCorr test, $\taumin=1$, $\taumax=60$, $\alpha_{\mathrm{PC}}=0.05$, one conditioning combination per PC1 iteration, no limit on the dimension of the conditioning sets, BH correction at $\alpha_{\mathrm{FDR}}=0.05$ over all candidates per target, and own-past-only parents for non-target nodes. Alternative choices that were considered and the reasons for not adopting them are recorded in the decision log (Appendix~\ref{app:decisions}).
+
+\section{Chapter Summary}
+\label{sec:pcmci-summary}
+
+This chapter explained why lagged correlation misidentifies drivers in autocorrelated climate data, and how PCMCI replaces it with a screening stage and a momentary conditional-independence test that conditions on the parents of both target and source. It defined the ParCorr statistic, the Benjamini--Hochberg FDR control applied over all 18{,}000 candidates per target, the edge representation and the vectorised implementation, and it listed the assumptions under which the resulting graph should be read. The next chapter describes how this graph is validated and used.

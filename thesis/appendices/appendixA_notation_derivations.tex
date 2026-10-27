@@ -1,0 +1,49 @@
+\label{app:notation}
+
+\section{Notation Conventions}
+\label{app:conventions}
+
+Scalars are italic ($x$), vectors bold lower case ($\mathbf{x}$), matrices bold upper case ($\mathbf{X}$) and sets calligraphic ($\mathcal{E}$). The time index $t$ counts days in Phase~1 and hours in Phase~2. A node is a pair $i=(r,v)$ of region and variable; $j$ denotes a target node. Lags $\tau$ and leads $L$ are positive integers in units of the time step. Estimated quantities carry a hat. The full symbol list is given in the front matter (List of Symbols).
+
+\section{Partial Correlation as Correlation of Regression Residuals}
+\label{app:parcorr}
+
+Let $\mathbf{x},\mathbf{y}\in\R^{n}$ be centred samples and $\mathbf{Z}\in\R^{n\times c}$ a conditioning matrix with orthonormal basis $\mathbf{Q}$ (so $\mathbf{Q}^{\top}\mathbf{Q}=\mathbf{I}$ and $\mathbf{P}=\mathbf{Q}\mathbf{Q}^{\top}$ is the orthogonal projector onto the column space of $\mathbf{Z}$). The least-squares residuals of $\mathbf{x}$ and $\mathbf{y}$ on $\mathbf{Z}$ are $\mathbf{r}_x=(\mathbf{I}-\mathbf{P})\mathbf{x}$ and $\mathbf{r}_y=(\mathbf{I}-\mathbf{P})\mathbf{y}$. The sample partial correlation is the correlation of these residuals,
+\begin{equation}
+  \hat\rho(x,y\mid\mathbf{Z}) = \frac{\mathbf{r}_x^{\top}\mathbf{r}_y}{\lVert\mathbf{r}_x\rVert\lVert\mathbf{r}_y\rVert}
+  = \frac{\mathbf{x}^{\top}(\mathbf{I}-\mathbf{P})\mathbf{y}}{\sqrt{\mathbf{x}^{\top}(\mathbf{I}-\mathbf{P})\mathbf{x}}\sqrt{\mathbf{y}^{\top}(\mathbf{I}-\mathbf{P})\mathbf{y}}},
+\end{equation}
+using the idempotence and symmetry of $\mathbf{I}-\mathbf{P}$. For $m$ candidate columns $\mathbf{X}_C$ sharing the same conditioning set, the numerators for all candidates are the vector $\mathbf{X}_C^{\top}(\mathbf{I}-\mathbf{P})\mathbf{y}=(\mathbf{X}_C-\mathbf{Q}\mathbf{Q}^{\top}\mathbf{X}_C)^{\top}\mathbf{r}_y$, which is the batched computation used in Algorithm~\ref{alg:pcmci}. Under joint Gaussianity and the null hypothesis $\rho=0$, the statistic $t=\hat\rho\sqrt{(n-2-c)/(1-\hat\rho^{2})}$ follows a Student-$t$ distribution with $n-2-c$ degrees of freedom, because $\hat\rho$ is then the ordinary correlation of two independent Gaussian vectors in the $(n-c)$-dimensional residual space~\cite{wilks2011statistical}.
+
+\section{Phase Randomisation Preserves the Autocorrelation Function}
+\label{app:phaserand}
+
+Let $\hat{x}_f$ be the discrete Fourier transform of a demeaned series of length $n$. By the Wiener--Khinchin theorem, the circular sample autocovariance is the inverse transform of the periodogram,
+\begin{equation}
+  \hat\gamma(h) = \frac{1}{n}\sum_{t=0}^{n-1} x_t\,x_{(t+h)\bmod n} = \frac{1}{n^{2}}\sum_{f}|\hat{x}_f|^{2}\,e^{2\pi i f h/n}.
+\end{equation}
+A phase-randomised surrogate has Fourier coefficients $\hat{\tilde{x}}_f=|\hat{x}_f|e^{i\theta_f}$, so $|\hat{\tilde{x}}_f|^2=|\hat{x}_f|^2$ and its circular autocovariance is identical to that of the original. The cross-periodogram between a surrogate and any other fixed series $y$ is $\hat{\tilde{x}}_f\overline{\hat{y}_f}=|\hat{x}_f||\hat{y}_f|e^{i(\theta_f-\arg\hat{y}_f)}$; with $\theta_f$ uniform and independent, its expectation is zero at every non-zero frequency, so the expected circular cross-covariance at every lag is zero. The linear (non-circular) autocovariance differs from the circular one by end effects of order $h/n$, which are negligible for $h\le 60$ and $n\approx 16{,}000$.
+
+\section{Benjamini--Hochberg as a Step-Up Procedure}
+\label{app:bh}
+
+Given $m$ $p$-values sorted as $p_{(1)}\le\dots\le p_{(m)}$, the BH procedure rejects the hypotheses $H_{(1)},\dots,H_{(h^\ast)}$ with $h^\ast=\max\{h: p_{(h)}\le h\alpha/m\}$. The adjusted values of Eq.~\eqref{eq:bh}, $q_{(h)}=\min_{h'\ge h}\min(1,m\,p_{(h')}/h')$, satisfy $q_{(h)}\le\alpha\iff h\le h^\ast$, so thresholding $q$ at $\alpha$ reproduces the procedure. Under independence of the null $p$-values, $\E[V/\max(S,1)]=\alpha m_0/m\le\alpha$, where $m_0$ is the number of true nulls~\cite{benjamini1995controlling}; the bound continues to hold under positive regression dependence on the subset of nulls~\cite{benjamini2001control}. Counting candidates removed by PC1 with $p=1$ increases $m$ without adding rejections, which makes the procedure conservative relative to correcting over the survivors only.
+
+\section{Implied Speed as a Lower Bound}
+\label{app:speed}
+
+Any signal travelling from region $r'$ to region $r$ must cover at least the shortest great-circle distance between a point of $r'$ and a point of $r$. The closest-cell distance $d(r',r)$ of Eq.~\eqref{eq:haversine} approximates this minimum from cell centres, with an error of at most about half a cell diagonal (about 200\,km at 2.5\dg). A signal that takes at most $\tau$ days therefore needs a speed of at least $d(r',r)/(\tau\,\Delta t)$, so $s_e$ is a lower bound on the required speed, and the B2 test rejects a link only if even this most favourable speed is too high. For adjacent regions, $d=0$ and every lag passes.
+
+\section{Relation Between the Two Skill Scores}
+\label{app:skill}
+
+For a standardised anomaly target with training mean close to zero, $\MSE_{\mathrm{clim}}\approx\var(Y)$. For persistence at lead $L$, $\MSE_{\mathrm{pers}}=\E[(Y_{t+L}-Y_t)^2]=2\var(Y)\big(1-\rho_Y(L)\big)$ for a stationary series with lag-$L$ autocorrelation $\rho_Y(L)$. Hence
+\begin{equation}
+  1-R^2_{\mathrm{clim}} = \frac{\MSE}{\var(Y)} = 2\big(1-\rho_Y(L)\big)\,\big(1-S_{\mathrm{pers}}\big).
+\end{equation}
+At a short lead, $\rho_Y(L)$ is close to one and persistence is very accurate, so a model can have a large $R^2_{\mathrm{clim}}$ and still a strongly negative $S_{\mathrm{pers}}$, as at the 1-day lead in Table~\ref{tab:stagec}. At a long lead, $\rho_Y(L)\approx 0$, so $\MSE_{\mathrm{pers}}\approx 2\var(Y)$; a model with $S_{\mathrm{pers}}\approx 0.4$ then has $1-R^2_{\mathrm{clim}}\approx 1.2$, consistent with the slightly negative $R^2_{\mathrm{clim}}$ at the 7-day lead. Both outcomes follow directly from the persistence properties of OLR rather than from any defect of the models.
+
+\section{Counting Candidate Combinations}
+\label{app:count}
+
+With $N$ nodes, lags $1,\dots,\taumax$ and $J$ target nodes, the number of lagged candidates per target is $N\taumax$ (each node, including the target itself, at each lag), and the total for all targets is $JN\taumax$. For $N=300$, $\taumax=60$ and $J=50$ this is $18{,}000$ per target and $900{,}000$ in total. If all $N$ nodes were targets and self-links were excluded, the count would be $N(N-1)\taumax=5{,}382{,}000$. For the decoy pass, $N=550$ gives $33{,}000$ candidates per target; for the 100-region pass, $N=596$ gives $35{,}760$.
