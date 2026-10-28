@@ -1,0 +1,32 @@
+\documentclass[border=4pt]{standalone}
+\input{wfstyle}
+\begin{document}
+\begin{tikzpicture}
+\def\W{2.25cm}\def\H{2.2cm}\def\dx{2.78}
+\card{a}{0,0}{cOrange}{A}{PCMCI}{\bul 18{,}000\\\hphantom{\bul}candidates\\\hphantom{\bul}per target\\\bul FDR 0.05}{\W}{\H}
+\card{b1}{\dx,0}{cRed}{B1}{Decoys}{\bul 250 phase-\\\hphantom{\bul}randomised\\\hphantom{\bul}surrogates\\\bul gate: rate $<$30\%}{\W}{\H}
+\card{b2}{2*\dx,0}{cPurple}{B2}{Lag mask}{\bul speed = $d/\tau$\\\bul SST 1, OLR/PW\\\hphantom{\bul}20, winds/h850\\\hphantom{\bul}50 m\,s$^{-1}$}{\W}{\H}
+\card{b3}{3*\dx,0}{cTeal}{B3}{Top-$k$}{\bul rank outside\\\hphantom{\bul}links by $|$MCI$|$\\\bul $k$ by $R^2$ on\\\hphantom{\bul}2005--2012}{\W}{\H}
+\card{b4}{4*\dx,0}{cBlue}{B4}{Resolution}{\bul 100 nested\\\hphantom{\bul}regions\\\bul same field,\\\hphantom{\bul}lag $\pm$2 days}{\W}{\H}
+\card{p}{5*\dx,0}{cGreen}{P}{Prior}{\bul one entry per\\\hphantom{\bul}source region\\\bul frozen before\\\hphantom{\bul}test years}{\W}{\H}
+\foreach \x/\y in {a/b1,b1/b2,b2/b3,b3/b4,b4/p}{\draw[flow] (\x.east) -- (\y.west);}
+% result tags
+\node[tag, draw=cOrange, fill=white, text=cOrange, below=3pt of a] (ta) {536 links};
+\node[tag, draw=cRed, fill=white, text=cRed, below=3pt of b1] (tb1) {0 of 250 selected};
+\node[tag, draw=cPurple, fill=white, text=cPurple, below=3pt of b2] (tb2) {3 of 536 fail};
+\node[tag, draw=cTeal, fill=white, text=cTeal, below=3pt of b3] (tb3) {$k{=}10$: 157 kept};
+\node[tag, draw=cBlue, fill=white, text=cBlue, below=3pt of b4] (tb4) {0.62 mean; 33 of 48};
+\node[tag, draw=cGreen, fill=white, text=cGreen, below=3pt of p] (tp) {2.06 regions per target};
+% use modes
+\def\yy{-4.35}
+\card{m1}{1.95,\yy}{cGreen}{1}{Restrict}{pool = prior regions\\+ the target region}{3.0cm}{1.15cm}
+\card{m2}{5.55,\yy}{cGreen}{2}{Initialise}{learnable bias $\beta\,\pi/\max\pi$\\on prior edge scores}{3.0cm}{1.15cm}
+\card{m3}{9.15,\yy}{cGreen}{3}{Regularise}{penalty $\gamma\,\cdot$ mean score\\outside the prior}{3.0cm}{1.15cm}
+\card{ctl}{12.75,\yy}{cGray}{C}{Matched controls}{no prior; random prior;\\lagged-correlation prior}{3.0cm}{1.15cm}
+\coordinate (bus) at ($(tp.south)+(0,-0.3)$);
+\draw[line width=1.3pt, color=cGray] (tp.south) -- (bus) -- (bus -| m1h.north);
+\foreach \m in {m1h,m2h,m3h}{\draw[flow] (bus -| \m.north) -- (\m.north);}
+\draw[flow, dashed] (bus -| ctl.north) -- (ctlh.north);
+\node[note, anchor=north west, align=left, fill=white, inner sep=1pt] at ([yshift=-4pt,xshift=4pt]bus -| m1h.north) {Stage C: three ways to use the frozen graph, each compared with matched controls of equal size};
+\end{tikzpicture}
+\end{document}

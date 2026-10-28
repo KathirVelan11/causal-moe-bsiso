@@ -1,254 +1,103 @@
 \label{chap:experiments}
 
-\section{Software and Computational Environment}
-\label{sec:impl-env}
+\section{Implementation}
+\label{sec:impl}
 
-The system is implemented in Python as a library (\texttt{causal\_moe}) with one runnable script per experiment and an automated test suite. All experiments run on CPU. Table~\ref{tab:software} lists the main dependencies with the versions pinned in the project's requirements file.
+The system is a Python library (\texttt{causal\_moe}) with one script per experiment and an automated test suite, run on CPU. NumPy and SciPy implement the vectorised PCMCI and the validation checks, scikit-learn the regional clustering, PyTorch and PyTorch Geometric the splitter and experts, and the \texttt{river} library the ADWIN detector; STARS is implemented from its published algorithm. The PCMCI tests compare our implementation with Tigramite (Section~\ref{sec:pcmci-compute}). Every experiment writes its configuration and per-region results to JSON, and all figures are regenerated from these files.
 
 \begin{table}[htbp]
 \centering
-\caption{Software environment (versions as pinned in \texttt{code/requirements.txt}).}
+\caption{Software environment (versions pinned in the project's requirements file).}
 \label{tab:software}
 \footnotesize
-\renewcommand{\arraystretch}{1.15}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}X}
+\begin{tabular}{lll}
 \toprule
 \textbf{Component} & \textbf{Version} & \textbf{Use} \\
 \midrule
-NumPy~\cite{harris2020array} & 1.26.4 & Arrays, FFT surrogates, vectorised PCMCI \\
-SciPy~\cite{virtanen2020scipy} & 1.17.1 & Student-$t$ distribution, statistical tests \\
-pandas & 2.3.3 & Calendar handling, season construction \\
-scikit-learn~\cite{pedregosa2011scikit} & 1.9.0 & $k$-means partition \\
-PyTorch~\cite{paszke2019pytorch} (CPU) & 2.13.0 & Splitter and expert models \\
-PyTorch Geometric~\cite{fey2019fast} & 2.8.0 & Message passing on the region graph \\
-river~\cite{montiel2021river} & 0.22.0 & ADWIN error-stream drift detector \\
-Matplotlib & 3.11.0 & Figures \\
+NumPy / SciPy & 1.26.4 / 1.17.1 & Vectorised PCMCI, FFT surrogates, statistics \\
+scikit-learn & 1.9.0 & $k$-means regional partition \\
+PyTorch (CPU) / PyTorch Geometric & 2.13.0 / 2.8.0 & Splitter and experts \\
+river & 0.22.0 & ADWIN drift detector \\
+Tigramite & 5.2.10.1 & Reference PCMCI for verification \\
 pytest & 9.0.3 & Automated tests \\
-Tigramite & 5.2.10.1 & Reference PCMCI for verification only \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{Data Pipeline and Preprocessing}
-\label{sec:impl-data}
-
-The data pipeline consists of four modules. \texttt{data/raw.py} loads the six gridded anomaly fields and the ocean mask into a single array of shape $(6, 16071, 25, 144)$. \texttt{data/clustering.py} builds the 50-region partition by $k$-means on OLR, and \texttt{data/mesh.py} derives the adjacency of regions, with longitude wrap-around. \texttt{causal\_graph/nodes.py} forms the 300 regional-mean node series (SST over ocean cells only), re-standardises each node over 1979--2012, constructs the nested 100-region split, and computes closest-cell haversine distances between all pairs of regions. \texttt{causal\_graph/season.py} computes the BSISO index and the per-year season mask. \texttt{data/windows.py} builds the 49-dimensional feature vectors and lead-$L$ targets and caches them to disk, so that all forecasting experiments read identical inputs.
-
-\section{PCMCI Implementation and Verification}
-\label{sec:impl-pcmci}
-
-\texttt{causal\_graph/pcmci.py} implements Algorithm~\ref{alg:pcmci}. The lagged design for all 300 nodes at 60 lags on the 7{,}153 season target days is built once ($7{,}153\times 18{,}000$ single-precision values, about 0.5\,GB) and shared by all targets. Partial correlations are computed by orthonormalising the conditioning set with a QR decomposition and residualising all candidate columns in one matrix product, processed in chunks of 4{,}096 columns.
-
-Correctness was verified by dedicated tests (\texttt{tests/test\_pcmci.py}) on synthetic vector-autoregressive data with known parents, including a common driver and a pure-noise node. The tests check that the implementation recovers the true parents and rejects the common-driver and noise nodes, and they compare it with Tigramite's \texttt{PCMCI.run\_pcmci} using ParCorr and equivalent link assumptions (any lagged parent for the targets; own past only for the other nodes), for one target and for two targets that are also sources of each other. The PC1 parent sets must be identical, the MCI strengths must agree to within $2\times10^{-3}$ and the $p$-values to within 5\% relative error. All tests pass. The full 50-target Stage~A run then takes about 23 minutes on a multi-core CPU. Table~\ref{tab:pcmci-config} gives the configuration.
-
-\begin{table}[htbp]
-\centering
-\caption{Stage~A (PCMCI) configuration as recorded in the frozen graph file.}
-\label{tab:pcmci-config}
-\footnotesize
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{p{6.5cm}p{4.5cm}p{3.3cm}}
-\toprule
-\textbf{Parameter} & \textbf{50 regions} & \textbf{100 regions (B4)} \\
-\midrule
-Nodes & 300 & 596 \\
-Candidates per target & 18{,}000 & 35{,}760 \\
-Targets & 50 OLR nodes & 100 OLR nodes \\
-Target days & \multicolumn{2}{l}{7{,}153 season days, 1979--2012} \\
-Lags $\taumin$--$\taumax$ & \multicolumn{2}{l}{1--60 days (lag 0 excluded)} \\
-CI test & \multicolumn{2}{l}{ParCorr (partial correlation, Student-$t$)} \\
-$\alpha_{\mathrm{PC}}$ & \multicolumn{2}{l}{0.05} \\
-PC1 combinations per iteration & \multicolumn{2}{l}{1} \\
-Max.\ conditioning dimension & \multicolumn{2}{l}{unlimited} \\
-Non-target node parents & \multicolumn{2}{l}{own past only} \\
-Multiple-testing correction & \multicolumn{2}{l}{Benjamini--Hochberg over all candidates per target} \\
-$\alpha_{\mathrm{FDR}}$ & \multicolumn{2}{l}{0.05} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\section{Surrogate Generation}
-\label{sec:impl-surrogates}
-
-\texttt{causal\_graph/validate.py} generates decoys with NumPy's real FFT: the demeaned series is transformed, the zero-frequency phase (and the Nyquist phase for an even length) is fixed at zero, the remaining phases are drawn from $\mathcal{U}[0,2\pi)$, the inverse transform is taken, and the result is standardised (Eq.~\eqref{eq:phaserand}). The 250 decoys are built from real source nodes drawn with replacement, using a fixed random seed, and the origin of every decoy is recorded. The decoy pass reuses the PCMCI implementation with the 550-node pool; decoy links are marked with a source region of $-1$.
-
-\section{Physical-Mask Implementation}
-\label{sec:impl-mask}
-
-Closest-cell distances are precomputed for all region pairs from cell-centre coordinates with the haversine formula. For each link, the implied speed of Eq.~\eqref{eq:speed}, the pass/fail result against the limits in Table~\ref{tab:speeds}, and the oscillation flag for $\tau\ge 25$ days are added to the link record.
-
-\section{Top-\texorpdfstring{$k$}{k} Selection and Resolution Comparison}
-\label{sec:impl-topk}
-
-The top-$k$ search evaluates $k=0,\dots,10$ by ridge regression with constant $10^{-3}$, fitted on 1979--2004 and scored on 2005--2012 season days (Eq.~\eqref{eq:r2k}). The resolution comparison reruns Stage~A on the 100-region nodes and evaluates the persistence rule of Eq.~\eqref{eq:persist} with a lag tolerance of $\pm2$ days. The frozen output, \texttt{results/phase1/causal\_graph\_50.json}, holds the configuration of every stage, the summary statistics, and for each target its validated links (source region, field, lag, strength, $p$, $q$, distance, speed and all flags) together with the region-level prior. Table~\ref{tab:val-config} gives the validation configuration.
+\section{Configuration}
+\label{sec:impl-config}
 
 \begin{table}[htbp]
 \centering
-\caption{Stage~B configuration.}
-\label{tab:val-config}
+\caption{Configuration of the causal graph (Stages A--B) and of the splitter and expert (Stage C). Splitter and expert settings are identical for every compared condition.}
+\label{tab:config}
 \footnotesize
 \renewcommand{\arraystretch}{1.15}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}X}
+\begin{tabular}{p{6.2cm}p{7.6cm}}
 \toprule
-\textbf{Check} & \textbf{Setting} \\
+\textbf{Parameter} & \textbf{Value} \\
 \midrule
-B1 decoys & 250 phase-randomised surrogates; separate PCMCI pass (550 nodes, 33{,}000 candidates per target); warning line: decoy rate $\ge 30\%$; strength bar: strongest selected decoy \\
-B2 lag mask & Closest-cell haversine distance; limits SST 1\ms, OLR and PW 20\ms, h850, u850 and u200 50\ms; flag $\tau\ge 25$ days; failures removed from the prior, kept in the graph file \\
-B3 top-$k$ & Outside links ranked by $|\MCI|$; $k\in\{0,\dots,10\}$; ridge fit 1979--2004, $R^2$ on 2005--2012 season days \\
-B4 persistence & 100 nested regions ($k$-means, 2 per region); same field, lag within $\pm 2$ days, any child pair; pass if $\Pi_r\ge 0.5$; flag only \\
-Prior & One entry per source region, strength $=\max|\MCI|$ \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{MoE Integration}
-\label{sec:impl-moe}
-
-The splitter (\texttt{splitter/dirgnn.py}) and the expert (\texttt{experts/expert.py}) are trained jointly with one Adam optimiser. \texttt{causal\_graph/prior.py} builds the priors (\texttt{pcmci}, \texttt{random}, \texttt{corr}) and applies the modes (\texttt{restrict}, \texttt{init}, \texttt{regularize}). All prior options are off by default, so that the earlier, prior-free behaviour is reproduced exactly when no prior is requested. Table~\ref{tab:hyper} lists the training configuration, which is identical for every condition compared in this thesis.
-
-\begin{table}[htbp]
-\centering
-\caption{Splitter and expert training configuration, identical across all compared conditions.}
-\label{tab:hyper}
-\footnotesize
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{p{7.0cm}p{6.5cm}}
-\toprule
-\textbf{Setting} & \textbf{Value} \\
-\midrule
-Epochs & 5 \\
-Training samples & first 4{,}000 contiguous season samples of the training period \\
-Optimiser, learning rate & Adam, $10^{-3}$ \\
-Batch size & 16 \\
-Hidden width (splitter encoder, expert MLP) & 16 \\
-Rationale generator window & 10 days \\
-Interventions per sample $M$ & 6 \\
-Variance weight $\lambda$ & 0 for the first 30\% of steps, then linear ramp to 1 \\
-Selected fraction $\rho_{\mathrm{top}}$ & $\min(0.5,\;3/|\mathcal{C}_r|)$ \\
-Target's own features supplied unconditionally & no (only if selected) \\
-Initialise-mode scale $\beta$ & 2 \\
-Regularise-mode weight $\gamma$ & 1 \\
-Informative-splitter threshold on $\sigma_a$ & 0.02 \\
-Seed & 0 \\
-Lead times & 7 days (primary), 1 day (secondary) \\
-Train / validation / test & 1979--2004 / 2005--2012 / 2013--2022 \\
-Scored test days & 1{,}989 season target days \\
+\multicolumn{2}{l}{\textit{Stage A: PCMCI}}\\
+Nodes; candidates per target & 300 (50 regions $\times$ 6 fields); 18{,}000 \\
+Lags; test & 1--60 days (lag 0 excluded); ParCorr \\
+$\alpha_{\mathrm{PC}}$; FDR level & 0.05; 0.05 (Benjamini--Hochberg over all candidates) \\
+Discovery days & 7{,}153 BSISO-season days, 1979--2012 \\
+\multicolumn{2}{l}{\textit{Stage B: validation}}\\
+B1 decoys; warning line & 250 phase-randomised; decoy rate $\ge$ 30\% \\
+B2 speed limits & SST 1, OLR/PW 20, h850/u850/u200 50 m\,s$^{-1}$; flag lags $\ge$ 25 d \\
+B3 & $k\in\{0,\dots,10\}$; fit 1979--2004, $R^2$ on 2005--2012 \\
+B4 & 100 regions (596 nodes); same field, lag $\pm$2 d; pass $\Pi_r\ge0.5$ \\
+\multicolumn{2}{l}{\textit{Stage C: splitter and expert (one pair per region)}}\\
+Epochs; training samples & 5; 4{,}000 contiguous samples \\
+Optimiser; learning rate; batch & Adam; $10^{-3}$; 16 \\
+Hidden width; generator window & 16; 10 days \\
+Interventions $M$; $\lambda$ & 6; 0 for the first 30\% of steps, then ramped to 1 \\
+Selected fraction & $\min(0.5,\,3/|\mathcal{C}_r|)$ \\
+Train / validation / test & 1979--2004 / 2005--2012 / 2013--2022 (1{,}989 season days) \\
+\multicolumn{2}{l}{\textit{Lifecycle}}\\
+Archive match threshold; pool blend & similarity $\ge$ 0.9; top-3 similarity-weighted \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\section{Experimental Conditions and Ablations}
+\section{Experiments}
 \label{sec:exp-grid}
 
-The Stage~C design crosses three priors (\texttt{pcmci}, \texttt{random}, \texttt{corr}) with three modes (restrict, initialise, regularise) and three pools (direct, 2hop, full), giving 27 prior configurations, plus a no-prior baseline per pool. Each configuration trains one splitter and expert per region, 50 per configuration, or 1{,}350 trainings for the prior grid. Table~\ref{tab:grid} shows the grid and the configurations reported in this thesis.
+Table~\ref{tab:experiments} lists the experiments reported in Chapter~\ref{chap:results}. Stage~C compares the PCMCI prior in restrict mode with the no-prior splitter in the full 50-region pool, the setting in which the splitter alone cannot discriminate and a prior has most room to help. The complete design crosses three priors (PCMCI, random, correlation) with three modes and three pools; the remaining cells use the same, already tested code and are listed as future work.
 
 \begin{table}[htbp]
 \centering
-\caption{Stage~C experimental grid. \done\ = results reported in Chapter~\ref{chap:results}; \planned\ = defined, implemented and unit-tested, results to follow. All cells use identical data, splits, seed and training budget.}
-\label{tab:grid}
+\caption{Experiments reported in this thesis.}
+\label{tab:experiments}
 \footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{llccc}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{1.2cm}}
 \toprule
-\textbf{Prior} & \textbf{Mode} & \textbf{direct} & \textbf{2hop} & \textbf{full} \\
+\textbf{Experiment} & \textbf{Setting} & \textbf{RQ} \\
 \midrule
-none & -- & \done\ (7\,d) & \done\ (7\,d) & \done\ (7\,d, 1\,d) \\
-pcmci & restrict & \planned & \planned & \done\ (7\,d, 1\,d) \\
-pcmci & initialise & \planned & \planned & \planned \\
-pcmci & regularise & \planned & \planned & \planned \\
-random & restrict / initialise / regularise & \planned & \planned & \planned \\
-corr & restrict / initialise / regularise & \planned & \planned & \planned \\
+Stage A + B & PCMCI at 50 regions; B1--B4; frozen prior & 1, 2 \\
+Pool size baseline & No prior, direct / 2hop / full, 7 days, year-round and season & 3 \\
+Stage C & PCMCI restrict vs no prior, full pool, 7 days and 1 day & 3 \\
+Training budget & 2 vs 5 epochs, direct pool & 3 \\
+Drift detection & Regions 22, 12, 29; abrupt (1997--98 El Ni\~{n}o) and gradual (2013--2022) shifts; four detector settings & 4 \\
+Expert lifecycle & Regions 22, 12, 29, 1979--2022: reactivation vs spawn, warm start vs fresh, single vs pooled & 4 \\
+Stage D & Sliding-window PCMCI (1 and 3 seasons) vs ENSO & 4 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
-
-The full pool is the most informative setting for the first comparison, because it is the one in which the splitter alone fails to discriminate (Section~\ref{sec:res-pool}) and in which a prior has the most room to help. The restrict mode is the strongest form of the prior. The reported comparisons are therefore the most direct test of whether the validated graph can rescue source selection in a large pool. The random-prior control at the same pool and mode is the next comparison in the programme, because it separates the effect of the graph's content from the effect of a smaller pool. Further ablations defined for the graph itself are listed in Appendix~\ref{app:registry}: the graph rebuilt with $\taumin=7$, top-$k$ selected by forecast-horizon skill, a full-year graph, persistence across the two halves of the development period, and a second data source.
-
-\section{Train, Validation and Holdout Discipline}
-\label{sec:exp-discipline}
-
-Every decision that could be tuned (the season definition, the PCMCI parameters, the validation thresholds, the choice of $k$ and the training configuration) was fixed using 1979--2012 data only, and the graph was frozen before any forecast on 2013--2022 was scored. Test-period scores were not used to select among configurations. Each reported configuration is a pre-defined cell of the grid in Table~\ref{tab:grid}.
 
 \section{Metrics}
 \label{sec:exp-metrics}
 
-\subsection{Forecast accuracy}
-For region $r$ with test days $t\in\mathcal{T}_r$ and forecasts $\hat{Y}_t$ of targets $Y_t$ (lead suppressed for brevity):
-\begin{align}
-  \MSE &= \frac{1}{|\mathcal{T}_r|}\sum_t(\hat{Y}_t-Y_t)^2, &
-  \mathrm{RMSE} &= \sqrt{\MSE}, &
-  \mathrm{MAE} &= \frac{1}{|\mathcal{T}_r|}\sum_t|\hat{Y}_t-Y_t|.
-  \label{eq:mse}
-\end{align}
-Because the target is a standardised anomaly, these errors are in units of the target's development-period standard deviation.
-
-\subsection{Skill scores}
-Skill is measured relative to two reference forecasts~\cite{murphy1988skill,jolliffe2012forecast}. \emph{Persistence} predicts that the anomaly at the issue time persists, $\hat{Y}^{\mathrm{pers}}_{t+L}=Y_t$. \emph{Climatology} predicts the mean of the training targets, $\hat{Y}^{\mathrm{clim}}=\bar{Y}_{\mathrm{train}}$, which is close to zero for anomalies. The MSE skill scores are
+Forecast error is measured by $\mathrm{MSE}$ and $\mathrm{RMSE}=\sqrt{\mathrm{MSE}}$ in units of the target's standard deviation. Skill is measured against two references:
 \begin{equation}
-  S_{\mathrm{pers}} = 1-\frac{\MSE}{\MSE_{\mathrm{pers}}},\qquad
-  R^2_{\mathrm{clim}} = 1-\frac{\MSE}{\MSE_{\mathrm{clim}}}.
+  S_{\mathrm{pers}}=1-\frac{\mathrm{MSE}}{\mathrm{MSE}_{\mathrm{pers}}},\qquad
+  R^2_{\mathrm{clim}}=1-\frac{\mathrm{MSE}}{\mathrm{MSE}_{\mathrm{clim}}},
   \label{eq:skill}
 \end{equation}
-A positive score means the model beats the reference. The two references are complementary. At short leads persistence is very hard to beat and climatology easy; at seven days OLR keeps almost no memory, so persistence becomes a weak reference, while climatology, which is the optimal constant forecast under squared error, becomes the demanding one. Both scores are reported together. The anomaly correlation coefficient
-\begin{equation}
-  \mathrm{ACC} = \frac{\sum_t(\hat{Y}_t-\bar{\hat{Y}})(Y_t-\bar{Y})}{\sqrt{\sum_t(\hat{Y}_t-\bar{\hat{Y}})^2\sum_t(Y_t-\bar{Y})^2}}
-\end{equation}
-measures phase agreement independently of amplitude and is part of the evaluation set for future runs.
+where persistence predicts $\hat{Y}_{t+L}=Y_t$ and climatology predicts the training mean. At one day persistence is very hard to beat; at seven days OLR keeps little memory, so persistence becomes easy and climatology becomes the demanding reference. Source selection is measured by the number of informative splitters ($\sigma_a\ge0.02$). Drift detectors are measured by detection latency and false-alarm rate, and the lifecycle by forecast MSE and \emph{forgetting}, the increase in error on a previously seen regime after adaptation. Paired comparisons across the 50 regions use the Wilcoxon signed-rank test; because neighbouring regions are correlated and a single training seed is used, these $p$-values are indicative.
 
-\subsection{Source-selection quality}
-The splitter's discrimination is measured by $\sigma_a$, the standard deviation of a target's mean candidate scores over the test days, and summarised as the number of informative splitters ($\sigma_a\ge 0.02$) out of 50. The selected sources and their overlap with the prior are recorded for every region.
-
-\subsection{Graph metrics}
-Stage~A and B are summarised by link counts by field, region and lag, the decoy rate, the number of B2 failures, the validation $R^2$ curve, the persistence scores, the prior size per target and the Jaccard distance between windows (Section~\ref{sec:val-metrics}).
-
-\section{Statistical Analysis}
-\label{sec:exp-stats}
-
-Comparisons between two conditions are \emph{paired}: both are evaluated on the same 50 regions and the same test days. For each region the difference of a score between the two conditions is computed, and the distribution of the 50 differences is summarised by the number of regions that improve, the median and the mean. Two tests of a zero median difference are reported: the sign test, which uses only the direction of each difference, and the Wilcoxon signed-rank test, which also uses their ranks. These tests treat regions as independent, which they are not: neighbouring regions share weather and their errors are correlated. Their $p$-values are therefore indicative and likely too small.
-
-Temporal dependence within a region matters for any test performed on daily errors. Consecutive forecast errors are autocorrelated, so a test that treats the 1{,}989 test days as independent would overstate significance~\cite{wilks1997resampling}. The appropriate tools are the Diebold--Mariano test with a heteroscedasticity- and autocorrelation-consistent variance~\cite{diebold1995comparing} for paired error series, and the moving-block bootstrap~\cite{kunsch1989jackknife} for confidence intervals of skill scores. Variability due to training randomness is measured by repeating each configuration over several seeds. These analyses are part of the evaluation protocol for the full grid; the comparisons reported in this thesis use a single seed and are interpreted accordingly. Results that are neutral or negative are reported with the same detail as positive ones.
-
-\section{Runtime, Memory and Scalability}
+\section{Computational Cost}
 \label{sec:exp-runtime}
 
-Table~\ref{tab:runtime} gives approximate wall-clock costs on the project's CPU workstation. The dominant cost of Stage~C is the number of trainings, $3\times3\times3\times50=1{,}350$ for the full grid, which runs in parallel across regions.
-
-\begin{table}[htbp]
-\centering
-\caption{Approximate wall-clock costs (CPU only).}
-\label{tab:runtime}
-\footnotesize
-\renewcommand{\arraystretch}{1.15}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{6.0cm}}
-\toprule
-\textbf{Step} & \textbf{Cost} \\
-\midrule
-Stage A, 50 regions (18{,}000 candidates $\times$ 50 targets) & about 23 min \\
-Stages A + B in full (season, A50, decoy pass, A100, validation) & about 2.3--2.5 h on 20 threads \\
-One Stage C configuration (50 regions) & about 20 min on 12 worker processes \\
-One region, one configuration & roughly 0.5--1.5 min \\
-Full Stage C grid (27 configurations) & about 6--8 h on 12 worker processes \\
-Stage D, one window length & about 1 h \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{Reproducibility and Artifact Organisation}
-\label{sec:exp-repro}
-
-All results are produced by scripts and saved as JSON files with their configuration; figures are regenerated from these files without retraining. The Phase~1 commands are:
-\begin{lstlisting}
-python scripts/phase1_build_graph.py        # season, A50, B1, A100, validation
-python scripts/phase1_run_stage_c.py --pools full --priors none,pcmci --modes restrict
-python scripts/phase1_run_stage_c.py --pools full --priors none,pcmci --modes restrict \
-    --cache-path cache/windowed_clustered50_lead1_v2.npz --out-dir results/phase1/stage_c_lead1
-python scripts/phase1_stage_d_drift.py --window-seasons 1
-python scripts/phase1_stage_d_drift.py --window-seasons 3
-python scripts/generate_phase1_figures.py
-\end{lstlisting}
-Appendix~\ref{app:repro} lists the repository structure, the result files behind every number in Chapter~\ref{chap:results}, and step-by-step instructions.
-
-\section{Chapter Summary}
-\label{sec:exp-summary}
-
-This chapter described the software, the data pipeline, the verified vectorised PCMCI, the decoy, mask, top-$k$ and persistence implementations, and the integration of the prior into the splitter. It defined the 27-configuration Stage~C grid and identified the configurations reported here, the metrics for forecast skill and source selection, the paired statistical analysis and its limits, and the computational costs. The next chapter presents the results.
+Stage~A at 50 regions (900{,}000 candidates) takes about 23 minutes on one workstation, and the complete Stages~A--B, including the 550-node decoy pass and the 596-node second resolution, about 2.5 hours on 20 threads. One 50-region Stage~C configuration takes about 20 minutes on 12 worker processes.

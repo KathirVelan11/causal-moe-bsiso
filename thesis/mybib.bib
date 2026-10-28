@@ -1,736 +1,189 @@
-% ---------------------------------------------------------------------
-% References for the thesis. Style: ieeetr (template default).
-% All entries are published works; DOIs/venues were checked against the
-% authors' knowledge of the literature. See docs/evidence_audit.md.
-% ---------------------------------------------------------------------
+% References (35). Style: ieeetr (template default).
+% The first seven entries are the project's core literature review.
 
-% ======================= Tropical dynamics, BSISO, OLR ================
+% ---------------- Core literature (project review) -------------------
+@inproceedings{wu2022discovering,
+  title={Discovering invariant rationales for graph neural networks},
+  author={Wu, Ying-Xin and Wang, Xiang and Zhang, An and He, Xiangnan and Chua, Tat-Seng},
+  booktitle={International Conference on Learning Representations (ICLR)}, year={2022},
+  note={arXiv:2201.12872}
+}
+@article{ghaffari2026graph,
+  title={Graph-conditioned mixture of graph neural network experts for traffic forecasting},
+  author={Ghaffari, Amirhossein and Sheikhi, Saeid and Gilman, Ekaterina},
+  journal={arXiv preprint arXiv:2605.30486}, year={2026}
+}
+@article{cao2026geometric,
+  title={Geometric mixture-of-experts with curvature-guided adaptive routing for graph representation learning},
+  author={Cao, Haifang and Wang, Yu and Li, Timing and Yao, Xinjie and Zhu, Pengfei},
+  journal={arXiv preprint arXiv:2603.22317}, year={2026}
+}
+@inproceedings{wu2024graphmetro,
+  title={{GraphMETRO}: Mitigating complex graph distribution shifts via mixture of aligned experts},
+  author={Wu, Shirley and Cao, Kaidi and Ribeiro, Bruno and Zou, James and Leskovec, Jure},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={37}, pages={9358--9387}, year={2024}
+}
+@article{kong2025dynamic,
+  title={Dynamic mixture-of-experts for incremental graph learning},
+  author={Kong, L. and others},
+  journal={arXiv preprint arXiv:2508.09974}, year={2025}
+}
+@article{li2022ood,
+  title={Out-of-distribution generalization on graphs: A survey},
+  author={Li, Haoyang and Wang, Xin and Zhang, Ziwei and Zhu, Wenwu},
+  journal={arXiv preprint arXiv:2202.07987}, year={2022}
+}
+@article{lam2023learning,
+  title={Learning skillful medium-range global weather forecasting},
+  author={Lam, Remi and Sanchez-Gonzalez, Alvaro and Willson, Matthew and Wirnsberger, Peter and Fortunato, Meire and Alet, Ferran and others},
+  journal={Science}, volume={382}, number={6677}, pages={1416--1421}, year={2023}
+}
+
+% ---------------- Tropical intraseasonal variability ------------------
 @article{madden1971detection,
   title={Detection of a 40--50 day oscillation in the zonal wind in the tropical {P}acific},
   author={Madden, Roland A. and Julian, Paul R.},
-  journal={Journal of the Atmospheric Sciences},
-  volume={28}, number={5}, pages={702--708}, year={1971}
-}
-@article{madden1972description,
-  title={Description of global-scale circulation cells in the tropics with a 40--50 day period},
-  author={Madden, Roland A. and Julian, Paul R.},
-  journal={Journal of the Atmospheric Sciences},
-  volume={29}, number={6}, pages={1109--1123}, year={1972}
-}
-@article{zhang2005mjo,
-  title={{M}adden--{J}ulian oscillation},
-  author={Zhang, Chidong},
-  journal={Reviews of Geophysics},
-  volume={43}, number={2}, pages={RG2003}, year={2005}
-}
-@article{yasunari1979cloudiness,
-  title={Cloudiness fluctuations associated with the {N}orthern {H}emisphere summer monsoon},
-  author={Yasunari, Tetsuzo},
-  journal={Journal of the Meteorological Society of Japan},
-  volume={57}, number={3}, pages={227--242}, year={1979}
-}
-@article{lau1986aspects,
-  title={Aspects of the 40--50 day oscillation during the northern summer as inferred from outgoing longwave radiation},
-  author={Lau, Ka-Ming and Chan, P. H.},
-  journal={Monthly Weather Review},
-  volume={114}, number={7}, pages={1354--1367}, year={1986}
+  journal={Journal of the Atmospheric Sciences}, volume={28}, number={5}, pages={702--708}, year={1971}
 }
 @article{wang1997model,
   title={A model for the boreal summer intraseasonal oscillation},
   author={Wang, Bin and Xie, Xiaosu},
-  journal={Journal of the Atmospheric Sciences},
-  volume={54}, number={1}, pages={72--86}, year={1997}
-}
-@article{jiang2004structures,
-  title={Structures and mechanisms of the northward propagating boreal summer intraseasonal oscillation},
-  author={Jiang, Xianan and Li, Tim and Wang, Bin},
-  journal={Journal of Climate},
-  volume={17}, number={5}, pages={1022--1039}, year={2004}
+  journal={Journal of the Atmospheric Sciences}, volume={54}, number={1}, pages={72--86}, year={1997}
 }
 @article{lee2013realtime,
   title={Real-time multivariate indices for the boreal summer intraseasonal oscillation over the {A}sian summer monsoon region},
   author={Lee, June-Yi and Wang, Bin and Wheeler, Matthew C. and Fu, Xiouhua and Waliser, Duane E. and Kang, In-Sik},
-  journal={Climate Dynamics},
-  volume={40}, number={1--2}, pages={493--509}, year={2013}
-}
-@article{kikuchi2012bimodal,
-  title={Bimodal representation of the tropical intraseasonal oscillation},
-  author={Kikuchi, Kazuyoshi and Wang, Bin and Kajikawa, Yoshiyuki},
-  journal={Climate Dynamics},
-  volume={38}, number={9--10}, pages={1989--2000}, year={2012}
-}
-@article{wheeler2004allseason,
-  title={An all-season real-time multivariate {MJO} index: Development of an index for monitoring and prediction},
-  author={Wheeler, Matthew C. and Hendon, Harry H.},
-  journal={Monthly Weather Review},
-  volume={132}, number={8}, pages={1917--1932}, year={2004}
-}
-@article{wheeler1999convectively,
-  title={Convectively coupled equatorial waves: Analysis of clouds and temperature in the wavenumber--frequency domain},
-  author={Wheeler, Matthew and Kiladis, George N.},
-  journal={Journal of the Atmospheric Sciences},
-  volume={56}, number={3}, pages={374--399}, year={1999}
-}
-@article{kiladis2009convectively,
-  title={Convectively coupled equatorial waves},
-  author={Kiladis, George N. and Wheeler, Matthew C. and Haertel, Patrick T. and Straub, Katherine H. and Roundy, Paul E.},
-  journal={Reviews of Geophysics},
-  volume={47}, number={2}, pages={RG2003}, year={2009}
-}
-@article{matsuno1966quasi,
-  title={Quasi-geostrophic motions in the equatorial area},
-  author={Matsuno, Taroh},
-  journal={Journal of the Meteorological Society of Japan},
-  volume={44}, number={1}, pages={25--43}, year={1966}
-}
-@article{gill1980simple,
-  title={Some simple solutions for heat-induced tropical circulation},
-  author={Gill, Adrian E.},
-  journal={Quarterly Journal of the Royal Meteorological Society},
-  volume={106}, number={449}, pages={447--462}, year={1980}
-}
-@article{liebmann1996description,
-  title={Description of a complete (interpolated) outgoing longwave radiation dataset},
-  author={Liebmann, Brant and Smith, Catherine A.},
-  journal={Bulletin of the American Meteorological Society},
-  volume={77}, number={6}, pages={1275--1277}, year={1996}
-}
-@article{arkin1987relationship,
-  title={The relationship between large-scale convective rainfall and cold cloud over the {W}estern {H}emisphere during 1982--84},
-  author={Arkin, Phillip A. and Meisner, Bernard N.},
-  journal={Monthly Weather Review},
-  volume={115}, number={1}, pages={51--74}, year={1987}
-}
-@article{bretherton2004relationships,
-  title={Relationships between water vapor path and precipitation over the tropical oceans},
-  author={Bretherton, Christopher S. and Peters, Matthew E. and Back, Larissa E.},
-  journal={Journal of Climate},
-  volume={17}, number={7}, pages={1517--1528}, year={2004}
+  journal={Climate Dynamics}, volume={40}, number={1--2}, pages={493--509}, year={2013}
 }
 @article{goswami2001intraseasonal,
   title={Intraseasonal oscillations and interannual variability of the {I}ndian summer monsoon},
   author={Goswami, B. N. and Ajaya Mohan, R. S.},
-  journal={Journal of Climate},
-  volume={14}, number={6}, pages={1180--1198}, year={2001}
+  journal={Journal of Climate}, volume={14}, number={6}, pages={1180--1198}, year={2001}
 }
-@article{annamalai2001active,
-  title={Active/break cycles: Diagnosis of the intraseasonal variability of the {A}sian summer monsoon},
-  author={Annamalai, H. and Slingo, J. M.},
-  journal={Climate Dynamics},
-  volume={18}, number={1--2}, pages={85--102}, year={2001}
+@article{kiladis2009convectively,
+  title={Convectively coupled equatorial waves},
+  author={Kiladis, George N. and Wheeler, Matthew C. and Haertel, Patrick T. and Straub, Katherine H. and Roundy, Paul E.},
+  journal={Reviews of Geophysics}, volume={47}, number={2}, pages={RG2003}, year={2009}
 }
-@article{webster1998monsoons,
-  title={Monsoons: Processes, predictability, and the prospects for prediction},
-  author={Webster, Peter J. and Maga{\~n}a, V. O. and Palmer, T. N. and Shukla, J. and Tomas, R. A. and Yanai, M. and Yasunari, T.},
-  journal={Journal of Geophysical Research: Oceans},
-  volume={103}, number={C7}, pages={14451--14510}, year={1998}
+@article{liebmann1996description,
+  title={Description of a complete (interpolated) outgoing longwave radiation dataset},
+  author={Liebmann, Brant and Smith, Catherine A.},
+  journal={Bulletin of the American Meteorological Society}, volume={77}, number={6}, pages={1275--1277}, year={1996}
 }
-@article{sperber2008coupled,
-  title={Coupled model simulations of boreal summer intraseasonal (30--50 day) variability, {P}art 1: Systematic errors and caution on use of metrics},
-  author={Sperber, Kenneth R. and Annamalai, H.},
-  journal={Climate Dynamics},
-  volume={31}, number={2--3}, pages={345--372}, year={2008}
-}
-@article{trenberth1998progress,
-  title={Progress during {TOGA} in understanding and modeling global teleconnections associated with tropical sea surface temperatures},
-  author={Trenberth, Kevin E. and Branstator, Grant W. and Karoly, David and Kumar, Arun and Lau, Ngar-Cheung and Ropelewski, Chester},
-  journal={Journal of Geophysical Research: Oceans},
-  volume={103}, number={C7}, pages={14291--14324}, year={1998}
-}
-@article{kumar1999weakening,
-  title={On the weakening relationship between the {I}ndian monsoon and {ENSO}},
-  author={Krishna Kumar, K. and Rajagopalan, Balaji and Cane, Mark A.},
-  journal={Science},
-  volume={284}, number={5423}, pages={2156--2159}, year={1999}
-}
-@book{holton2013introduction,
-  title={An Introduction to Dynamic Meteorology},
-  author={Holton, James R. and Hakim, Gregory J.},
-  edition={5th}, publisher={Academic Press}, address={Oxford}, year={2013}
-}
-@article{hannachi2007empirical,
-  title={Empirical orthogonal functions and related techniques in atmospheric science: A review},
-  author={Hannachi, A. and Jolliffe, I. T. and Stephenson, D. B.},
-  journal={International Journal of Climatology},
-  volume={27}, number={9}, pages={1119--1152}, year={2007}
-}
-@article{north1982sampling,
-  title={Sampling errors in the estimation of empirical orthogonal functions},
-  author={North, Gerald R. and Bell, Thomas L. and Cahalan, Robert F. and Moeng, Fanthune J.},
-  journal={Monthly Weather Review},
-  volume={110}, number={7}, pages={699--706}, year={1982}
+@article{arkin1987relationship,
+  title={The relationship between large-scale convective rainfall and cold cloud over the {W}estern {H}emisphere during 1982--84},
+  author={Arkin, Phillip A. and Meisner, Bernard N.},
+  journal={Monthly Weather Review}, volume={115}, number={1}, pages={51--74}, year={1987}
 }
 @article{vitart2017s2s,
   title={The {Subseasonal to Seasonal} ({S2S}) prediction project database},
   author={Vitart, F. and Ardilouze, C. and Bonet, A. and Brookshaw, A. and Chen, M. and Codorean, C. and others},
-  journal={Bulletin of the American Meteorological Society},
-  volume={98}, number={1}, pages={163--173}, year={2017}
-}
-@article{vitart2018s2s,
-  title={The sub-seasonal to seasonal prediction project ({S2S}) and the prediction of extreme events},
-  author={Vitart, Fr{\'e}d{\'e}ric and Robertson, Andrew W.},
-  journal={npj Climate and Atmospheric Science},
-  volume={1}, pages={3}, year={2018}
-}
-@article{lorenz1963deterministic,
-  title={Deterministic nonperiodic flow},
-  author={Lorenz, Edward N.},
-  journal={Journal of the Atmospheric Sciences},
-  volume={20}, number={2}, pages={130--141}, year={1963}
-}
-@article{bauer2015quiet,
-  title={The quiet revolution of numerical weather prediction},
-  author={Bauer, Peter and Thorpe, Alan and Brunet, Gilbert},
-  journal={Nature},
-  volume={525}, number={7567}, pages={47--55}, year={2015}
+  journal={Bulletin of the American Meteorological Society}, volume={98}, number={1}, pages={163--173}, year={2017}
 }
 
-% ======================= Causal discovery ============================
+% ---------------- Causal discovery and testing -------------------------
 @article{granger1969investigating,
   title={Investigating causal relations by econometric models and cross-spectral methods},
   author={Granger, C. W. J.},
-  journal={Econometrica},
-  volume={37}, number={3}, pages={424--438}, year={1969}
-}
-@book{spirtes2000causation,
-  title={Causation, Prediction, and Search},
-  author={Spirtes, Peter and Glymour, Clark and Scheines, Richard},
-  edition={2nd}, publisher={MIT Press}, address={Cambridge, MA}, year={2000}
-}
-@book{pearl2009causality,
-  title={Causality: Models, Reasoning, and Inference},
-  author={Pearl, Judea},
-  edition={2nd}, publisher={Cambridge University Press}, address={Cambridge}, year={2009}
-}
-@article{runge2019detecting,
-  title={Detecting and quantifying causal associations in large nonlinear time series datasets},
-  author={Runge, Jakob and Nowack, Peer and Kretschmer, Marlene and Flaxman, Seth and Sejdinovic, Dino},
-  journal={Science Advances},
-  volume={5}, number={11}, pages={eaau4996}, year={2019}
-}
-@article{runge2019inferring,
-  title={Inferring causation from time series in {E}arth system sciences},
-  author={Runge, Jakob and Bathiany, Sebastian and Bollt, Erik and Camps-Valls, Gustau and Coumou, Dim and Deyle, Ethan and Glymour, Clark and Kretschmer, Marlene and Mahecha, Miguel D. and Mu{\~n}oz-Mar{\'\i}, Jordi and others},
-  journal={Nature Communications},
-  volume={10}, pages={2553}, year={2019}
-}
-@article{runge2018causal,
-  title={Causal network reconstruction from time series: From theoretical assumptions to practical estimation},
-  author={Runge, Jakob},
-  journal={Chaos: An Interdisciplinary Journal of Nonlinear Science},
-  volume={28}, number={7}, pages={075310}, year={2018}
+  journal={Econometrica}, volume={37}, number={3}, pages={424--438}, year={1969}
 }
 @article{runge2014quantifying,
   title={Quantifying the strength and delay of climatic interactions: The ambiguities of cross correlation and a novel measure based on graphical models},
   author={Runge, Jakob and Petoukhov, Vladimir and Kurths, J{\"u}rgen},
-  journal={Journal of Climate},
-  volume={27}, number={2}, pages={720--739}, year={2014}
+  journal={Journal of Climate}, volume={27}, number={2}, pages={720--739}, year={2014}
 }
-@inproceedings{runge2020discovering,
-  title={Discovering contemporaneous and lagged causal relations in autocorrelated nonlinear time series datasets},
+@article{runge2018causal,
+  title={Causal network reconstruction from time series: From theoretical assumptions to practical estimation},
   author={Runge, Jakob},
-  booktitle={Proceedings of the 36th Conference on Uncertainty in Artificial Intelligence (UAI)},
-  series={PMLR}, volume={124}, pages={1388--1397}, year={2020}
+  journal={Chaos: An Interdisciplinary Journal of Nonlinear Science}, volume={28}, number={7}, pages={075310}, year={2018}
 }
-@article{runge2023causal,
-  title={Causal inference for time series},
-  author={Runge, Jakob and Gerhardus, Andreas and Varando, Gherardo and Eyring, Veronika and Camps-Valls, Gustau},
-  journal={Nature Reviews Earth \& Environment},
-  volume={4}, number={7}, pages={487--505}, year={2023}
+@article{runge2019detecting,
+  title={Detecting and quantifying causal associations in large nonlinear time series datasets},
+  author={Runge, Jakob and Nowack, Peer and Kretschmer, Marlene and Flaxman, Seth and Sejdinovic, Dino},
+  journal={Science Advances}, volume={5}, number={11}, pages={eaau4996}, year={2019}
 }
-@article{camps2023discovering,
-  title={Discovering causal relations and equations from data},
-  author={Camps-Valls, Gustau and Gerhardus, Andreas and Ninad, Urmi and Varando, Gherardo and Martius, Georg and Balaguer-Ballester, Emili and Vinuesa, Ricardo and Diaz, Emiliano and Zanna, Laure and Runge, Jakob},
-  journal={Physics Reports},
-  volume={1044}, pages={1--68}, year={2023}
+@article{runge2019inferring,
+  title={Inferring causation from time series in {E}arth system sciences},
+  author={Runge, Jakob and Bathiany, Sebastian and Bollt, Erik and Camps-Valls, Gustau and Coumou, Dim and Deyle, Ethan and others},
+  journal={Nature Communications}, volume={10}, pages={2553}, year={2019}
 }
 @inproceedings{gerhardus2020high,
   title={High-recall causal discovery for autocorrelated time series with latent confounders},
   author={Gerhardus, Andreas and Runge, Jakob},
-  booktitle={Advances in Neural Information Processing Systems},
-  volume={33}, pages={12615--12625}, year={2020}
-}
-@article{saggioro2020reconstructing,
-  title={Reconstructing regime-dependent causal relationships from observational time series},
-  author={Saggioro, Elena and de Wiljes, Jana and Kretschmer, Marlene and Runge, Jakob},
-  journal={Chaos: An Interdisciplinary Journal of Nonlinear Science},
-  volume={30}, number={11}, pages={113115}, year={2020}
-}
-@article{ebert2012causal,
-  title={Causal discovery for climate research using graphical models},
-  author={Ebert-Uphoff, Imme and Deng, Yi},
-  journal={Journal of Climate},
-  volume={25}, number={17}, pages={5648--5665}, year={2012}
-}
-@article{kretschmer2016using,
-  title={Using causal effect networks to analyze different {A}rctic drivers of midlatitude winter circulation},
-  author={Kretschmer, Marlene and Coumou, Dim and Donges, Jonathan F. and Runge, Jakob},
-  journal={Journal of Climate},
-  volume={29}, number={11}, pages={4069--4081}, year={2016}
+  booktitle={Advances in Neural Information Processing Systems}, volume={33}, pages={12615--12625}, year={2020}
 }
 @article{dicapua2020tropical,
   title={Tropical and mid-latitude teleconnections interacting with the {I}ndian summer monsoon rainfall: A theory-guided causal effect network approach},
   author={Di Capua, Giorgia and Kretschmer, Marlene and Donner, Reik V. and van den Hurk, Bart and Vellore, Ramesh and Krishnan, Raghavan and Coumou, Dim},
-  journal={Earth System Dynamics},
-  volume={11}, number={1}, pages={17--34}, year={2020}
+  journal={Earth System Dynamics}, volume={11}, number={1}, pages={17--34}, year={2020}
 }
-@article{dicapua2020dominant,
-  title={Dominant patterns of interaction between the tropics and mid-latitudes in boreal summer: Causal relationships and the role of timescales},
-  author={Di Capua, Giorgia and Runge, Jakob and Donner, Reik V. and van den Hurk, Bart and Turner, Andrew G. and Vellore, Ramesh and Krishnan, Raghavan and Coumou, Dim},
-  journal={Weather and Climate Dynamics},
-  volume={1}, number={2}, pages={519--539}, year={2020}
-}
-@article{nowack2020causal,
-  title={Causal networks for climate model evaluation and constrained projections},
-  author={Nowack, Peer and Runge, Jakob and Eyring, Veronika and Haigh, Joanna D.},
-  journal={Nature Communications},
-  volume={11}, pages={1415}, year={2020}
-}
-@article{tibau2022spatiotemporal,
-  title={A spatiotemporal stochastic climate model for benchmarking causal discovery methods for teleconnections},
-  author={Tibau, Xavier-Andoni and Reimers, Christian and Gerhardus, Andreas and Denzler, Joachim and Eyring, Veronika and Runge, Jakob},
-  journal={Environmental Data Science},
-  volume={1}, pages={e12}, year={2022}
-}
-@article{sugihara2012detecting,
-  title={Detecting causality in complex ecosystems},
-  author={Sugihara, George and May, Robert and Ye, Hao and Hsieh, Chih-hao and Deyle, Ethan and Fogarty, Michael and Munch, Stephan},
-  journal={Science},
-  volume={338}, number={6106}, pages={496--500}, year={2012}
-}
-@article{schreiber2000measuring,
-  title={Measuring information transfer},
-  author={Schreiber, Thomas},
-  journal={Physical Review Letters},
-  volume={85}, number={2}, pages={461--464}, year={2000}
-}
-@inproceedings{zheng2018dags,
-  title={{DAGs} with {NO TEARS}: Continuous optimization for structure learning},
-  author={Zheng, Xun and Aragam, Bryon and Ravikumar, Pradeep and Xing, Eric P.},
-  booktitle={Advances in Neural Information Processing Systems},
-  volume={31}, year={2018}
-}
-@inproceedings{pamfil2020dynotears,
-  title={{DYNOTEARS}: Structure learning from time-series data},
-  author={Pamfil, Roxana and Sriwattanaworachai, Nisara and Desai, Shaan and Pilgerstorfer, Philip and Georgatzis, Konstantinos and Beaumont, Paul and Aragam, Bryon},
-  booktitle={Proceedings of the 23rd International Conference on Artificial Intelligence and Statistics (AISTATS)},
-  series={PMLR}, volume={108}, pages={1595--1605}, year={2020}
-}
-@article{tank2022neural,
-  title={Neural {G}ranger causality},
-  author={Tank, Alex and Covert, Ian and Foti, Nicholas and Shojaie, Ali and Fox, Emily B.},
-  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
-  volume={44}, number={8}, pages={4267--4279}, year={2022}
-}
-@inproceedings{kipf2018neural,
-  title={Neural relational inference for interacting systems},
-  author={Kipf, Thomas and Fetaya, Ethan and Wang, Kuan-Chieh and Welling, Max and Zemel, Richard},
-  booktitle={Proceedings of the 35th International Conference on Machine Learning (ICML)},
-  series={PMLR}, volume={80}, pages={2688--2697}, year={2018}
-}
-@inproceedings{lowe2022amortized,
-  title={Amortized causal discovery: Learning to infer causal graphs from time-series data},
-  author={L{\"o}we, Sindy and Madras, David and Zemel, Richard and Welling, Max},
-  booktitle={Proceedings of the First Conference on Causal Learning and Reasoning (CLeaR)},
-  series={PMLR}, volume={177}, pages={509--525}, year={2022}
-}
-@article{peters2016causal,
-  title={Causal inference by using invariant prediction: Identification and confidence intervals},
-  author={Peters, Jonas and B{\"u}hlmann, Peter and Meinshausen, Nicolai},
-  journal={Journal of the Royal Statistical Society: Series B},
-  volume={78}, number={5}, pages={947--1012}, year={2016}
-}
-
-% ======================= Statistics, testing, surrogates ===============
 @article{benjamini1995controlling,
   title={Controlling the false discovery rate: A practical and powerful approach to multiple testing},
   author={Benjamini, Yoav and Hochberg, Yosef},
-  journal={Journal of the Royal Statistical Society: Series B},
-  volume={57}, number={1}, pages={289--300}, year={1995}
-}
-@article{benjamini2001control,
-  title={The control of the false discovery rate in multiple testing under dependency},
-  author={Benjamini, Yoav and Yekutieli, Daniel},
-  journal={The Annals of Statistics},
-  volume={29}, number={4}, pages={1165--1188}, year={2001}
-}
-@article{ventura2004controlling,
-  title={Controlling the proportion of falsely rejected hypotheses when conducting multiple tests with climatological data},
-  author={Ventura, Val{\'e}rie and Paciorek, Christopher J. and Risbey, James S.},
-  journal={Journal of Climate},
-  volume={17}, number={22}, pages={4343--4356}, year={2004}
-}
-@article{wilks2016stippling,
-  title={``{T}he stippling shows statistically significant grid points'': How research results are routinely overstated and overinterpreted, and what to do about it},
-  author={Wilks, D. S.},
-  journal={Bulletin of the American Meteorological Society},
-  volume={97}, number={12}, pages={2263--2273}, year={2016}
-}
-@article{wilks1997resampling,
-  title={Resampling hypothesis tests for autocorrelated fields},
-  author={Wilks, D. S.},
-  journal={Journal of Climate},
-  volume={10}, number={1}, pages={65--82}, year={1997}
-}
-@book{wilks2011statistical,
-  title={Statistical Methods in the Atmospheric Sciences},
-  author={Wilks, Daniel S.},
-  edition={3rd}, publisher={Academic Press}, address={Oxford}, year={2011}
-}
-@article{bretherton1999effective,
-  title={The effective number of spatial degrees of freedom of a time-varying field},
-  author={Bretherton, Christopher S. and Widmann, Martin and Dymnikov, Valentin P. and Wallace, John M. and Blad{\'e}, Ileana},
-  journal={Journal of Climate},
-  volume={12}, number={7}, pages={1990--2009}, year={1999}
+  journal={Journal of the Royal Statistical Society: Series B}, volume={57}, number={1}, pages={289--300}, year={1995}
 }
 @article{theiler1992testing,
   title={Testing for nonlinearity in time series: The method of surrogate data},
   author={Theiler, James and Eubank, Stephen and Longtin, Andr{\'e} and Galdrikian, Bryan and Farmer, J. Doyne},
-  journal={Physica D: Nonlinear Phenomena},
-  volume={58}, number={1--4}, pages={77--94}, year={1992}
+  journal={Physica D: Nonlinear Phenomena}, volume={58}, number={1--4}, pages={77--94}, year={1992}
 }
 @article{schreiber2000surrogate,
   title={Surrogate time series},
   author={Schreiber, Thomas and Schmitz, Andreas},
-  journal={Physica D: Nonlinear Phenomena},
-  volume={142}, number={3--4}, pages={346--382}, year={2000}
-}
-@article{lancaster2018surrogate,
-  title={Surrogate data for hypothesis testing of physical systems},
-  author={Lancaster, Gemma and Iatsenko, Dmytro and Pidde, Aleksandra and Ticcinelli, Valentina and Stefanovska, Aneta},
-  journal={Physics Reports},
-  volume={748}, pages={1--60}, year={2018}
-}
-@article{kunsch1989jackknife,
-  title={The jackknife and the bootstrap for general stationary observations},
-  author={K{\"u}nsch, Hans R.},
-  journal={The Annals of Statistics},
-  volume={17}, number={3}, pages={1217--1241}, year={1989}
-}
-@book{efron1993introduction,
-  title={An Introduction to the Bootstrap},
-  author={Efron, Bradley and Tibshirani, Robert J.},
-  publisher={Chapman \& Hall}, address={New York}, year={1993}
-}
-@article{diebold1995comparing,
-  title={Comparing predictive accuracy},
-  author={Diebold, Francis X. and Mariano, Roberto S.},
-  journal={Journal of Business \& Economic Statistics},
-  volume={13}, number={3}, pages={253--263}, year={1995}
-}
-@article{murphy1988skill,
-  title={Skill scores based on the mean square error and their relationships to the correlation coefficient},
-  author={Murphy, Allan H.},
-  journal={Monthly Weather Review},
-  volume={116}, number={12}, pages={2417--2424}, year={1988}
-}
-@book{jolliffe2012forecast,
-  title={Forecast Verification: A Practitioner's Guide in Atmospheric Science},
-  author={Jolliffe, Ian T. and Stephenson, David B.},
-  edition={2nd}, publisher={Wiley-Blackwell}, address={Chichester}, year={2012}
-}
-@article{bergmeir2012use,
-  title={On the use of cross-validation for time series predictor evaluation},
-  author={Bergmeir, Christoph and Ben{\'\i}tez, Jos{\'e} M.},
-  journal={Information Sciences},
-  volume={191}, pages={192--213}, year={2012}
-}
-@article{kaufman2012leakage,
-  title={Leakage in data mining: Formulation, detection, and avoidance},
-  author={Kaufman, Shachar and Rosset, Saharon and Perlich, Claudia and Stitelman, Ori},
-  journal={ACM Transactions on Knowledge Discovery from Data},
-  volume={6}, number={4}, pages={15:1--15:21}, year={2012}
-}
-@article{tibshirani1996regression,
-  title={Regression shrinkage and selection via the lasso},
-  author={Tibshirani, Robert},
-  journal={Journal of the Royal Statistical Society: Series B},
-  volume={58}, number={1}, pages={267--288}, year={1996}
-}
-@article{hoerl1970ridge,
-  title={Ridge regression: Biased estimation for nonorthogonal problems},
-  author={Hoerl, Arthur E. and Kennard, Robert W.},
-  journal={Technometrics},
-  volume={12}, number={1}, pages={55--67}, year={1970}
-}
-@article{lloyd1982least,
-  title={Least squares quantization in {PCM}},
-  author={Lloyd, Stuart P.},
-  journal={IEEE Transactions on Information Theory},
-  volume={28}, number={2}, pages={129--137}, year={1982}
-}
-@article{sinnott1984virtues,
-  title={Virtues of the haversine},
-  author={Sinnott, Roger W.},
-  journal={Sky and Telescope},
-  volume={68}, number={2}, pages={159}, year={1984}
+  journal={Physica D: Nonlinear Phenomena}, volume={142}, number={3--4}, pages={346--382}, year={2000}
 }
 
-% ======================= Regime shifts and drift ======================
+% ---------------- Drift, experts, adaptation ---------------------------
 @article{rodionov2004sequential,
   title={A sequential algorithm for testing climate regime shifts},
   author={Rodionov, Sergei N.},
-  journal={Geophysical Research Letters},
-  volume={31}, number={9}, pages={L09204}, year={2004}
-}
-@article{rodionov2006use,
-  title={Use of prewhitening in climate regime shift detection},
-  author={Rodionov, Sergei N.},
-  journal={Geophysical Research Letters},
-  volume={33}, number={12}, pages={L12707}, year={2006}
-}
-@article{page1954continuous,
-  title={Continuous inspection schemes},
-  author={Page, E. S.},
-  journal={Biometrika},
-  volume={41}, number={1/2}, pages={100--115}, year={1954}
+  journal={Geophysical Research Letters}, volume={31}, number={9}, pages={L09204}, year={2004}
 }
 @inproceedings{bifet2007learning,
   title={Learning from time-changing data with adaptive windowing},
   author={Bifet, Albert and Gavald{\`a}, Ricard},
-  booktitle={Proceedings of the 2007 SIAM International Conference on Data Mining},
-  pages={443--448}, year={2007}
+  booktitle={Proceedings of the 2007 SIAM International Conference on Data Mining}, pages={443--448}, year={2007}
 }
 @article{gama2014survey,
   title={A survey on concept drift adaptation},
   author={Gama, Jo{\~a}o and {\v{Z}}liobait{\.e}, Indr{\.e} and Bifet, Albert and Pechenizkiy, Mykola and Bouchachia, Abdelhamid},
-  journal={ACM Computing Surveys},
-  volume={46}, number={4}, pages={44:1--44:37}, year={2014}
+  journal={ACM Computing Surveys}, volume={46}, number={4}, pages={44:1--44:37}, year={2014}
 }
-@article{lu2019learning,
-  title={Learning under concept drift: A review},
-  author={Lu, Jie and Liu, Anjin and Dong, Fan and Gu, Feng and Gama, Jo{\~a}o and Zhang, Guangquan},
-  journal={IEEE Transactions on Knowledge and Data Engineering},
-  volume={31}, number={12}, pages={2346--2363}, year={2019}
-}
-@book{quinonero2009dataset,
-  title={Dataset Shift in Machine Learning},
-  editor={Qui{\~n}onero-Candela, Joaquin and Sugiyama, Masashi and Schwaighofer, Anton and Lawrence, Neil D.},
-  publisher={MIT Press}, address={Cambridge, MA}, year={2009}
-}
-@article{kirkpatrick2017overcoming,
-  title={Overcoming catastrophic forgetting in neural networks},
-  author={Kirkpatrick, James and Pascanu, Razvan and Rabinowitz, Neil and Veness, Joel and Desjardins, Guillaume and Rusu, Andrei A. and others},
-  journal={Proceedings of the National Academy of Sciences},
-  volume={114}, number={13}, pages={3521--3526}, year={2017}
-}
-@article{rusu2016progressive,
-  title={Progressive neural networks},
-  author={Rusu, Andrei A. and Rabinowitz, Neil C. and Desjardins, Guillaume and Soyer, Hubert and Kirkpatrick, James and Kavukcuoglu, Koray and Pascanu, Razvan and Hadsell, Raia},
-  journal={arXiv preprint arXiv:1606.04671}, year={2016}
-}
-@inproceedings{aljundi2017expert,
-  title={Expert gate: Lifelong learning with a network of experts},
-  author={Aljundi, Rahaf and Chakravarty, Punarjay and Tuytelaars, Tinne},
-  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
-  pages={3366--3375}, year={2017}
-}
-
-% ======================= Mixture of experts, invariance, graphs =========
 @article{jacobs1991adaptive,
   title={Adaptive mixtures of local experts},
   author={Jacobs, Robert A. and Jordan, Michael I. and Nowlan, Steven J. and Hinton, Geoffrey E.},
-  journal={Neural Computation},
-  volume={3}, number={1}, pages={79--87}, year={1991}
-}
-@article{jordan1994hierarchical,
-  title={Hierarchical mixtures of experts and the {EM} algorithm},
-  author={Jordan, Michael I. and Jacobs, Robert A.},
-  journal={Neural Computation},
-  volume={6}, number={2}, pages={181--214}, year={1994}
+  journal={Neural Computation}, volume={3}, number={1}, pages={79--87}, year={1991}
 }
 @inproceedings{shazeer2017outrageously,
   title={Outrageously large neural networks: The sparsely-gated mixture-of-experts layer},
   author={Shazeer, Noam and Mirhoseini, Azalia and Maziarz, Krzysztof and Davis, Andy and Le, Quoc and Hinton, Geoffrey and Dean, Jeff},
   booktitle={International Conference on Learning Representations (ICLR)}, year={2017}
 }
-@inproceedings{lepikhin2021gshard,
-  title={{GShard}: Scaling giant models with conditional computation and automatic sharding},
-  author={Lepikhin, Dmitry and Lee, HyoukJoong and Xu, Yuanzhong and Chen, Dehao and Firat, Orhan and Huang, Yanping and Krikun, Maxim and Shazeer, Noam and Chen, Zhifeng},
-  booktitle={International Conference on Learning Representations (ICLR)}, year={2021}
-}
-@article{fedus2022switch,
-  title={Switch transformers: Scaling to trillion parameter models with simple and efficient sparsity},
-  author={Fedus, William and Zoph, Barret and Shazeer, Noam},
-  journal={Journal of Machine Learning Research},
-  volume={23}, number={120}, pages={1--39}, year={2022}
-}
-@inproceedings{wang2023graph,
-  title={Graph mixture of experts: Learning on large-scale graphs with explicit diversity modeling},
-  author={Wang, Haotao and Jiang, Ziyu and You, Yuning and Han, Yan and Liu, Gaowen and Srinivasa, Jayanth and Kompella, Ramana Rao and Wang, Zhangyang},
-  booktitle={Advances in Neural Information Processing Systems},
-  volume={36}, year={2023}
-}
-@inproceedings{wu2022discovering,
-  title={Discovering invariant rationales for graph neural networks},
-  author={Wu, Ying-Xin and Wang, Xiang and Zhang, An and He, Xiangnan and Chua, Tat-Seng},
-  booktitle={International Conference on Learning Representations (ICLR)}, year={2022}
-}
-@article{arjovsky2019invariant,
-  title={Invariant risk minimization},
-  author={Arjovsky, Martin and Bottou, L{\'e}on and Gulrajani, Ishaan and Lopez-Paz, David},
-  journal={arXiv preprint arXiv:1907.02893}, year={2019}
-}
-@inproceedings{krueger2021out,
-  title={Out-of-distribution generalization via risk extrapolation ({REx})},
-  author={Krueger, David and Caballero, Ethan and Jacobsen, Joern-Henrik and Zhang, Amy and Binas, Jonathan and Zhang, Dinghuai and Le Priol, Remi and Courville, Aaron},
-  booktitle={Proceedings of the 38th International Conference on Machine Learning (ICML)},
-  series={PMLR}, volume={139}, pages={5815--5826}, year={2021}
-}
-@inproceedings{jang2017categorical,
-  title={Categorical reparameterization with {G}umbel-softmax},
-  author={Jang, Eric and Gu, Shixiang and Poole, Ben},
-  booktitle={International Conference on Learning Representations (ICLR)}, year={2017}
-}
-@article{battaglia2018relational,
-  title={Relational inductive biases, deep learning, and graph networks},
-  author={Battaglia, Peter W. and Hamrick, Jessica B. and Bapst, Victor and Sanchez-Gonzalez, Alvaro and Zambaldi, Vinicius and Malinowski, Mateusz and others},
-  journal={arXiv preprint arXiv:1806.01261}, year={2018}
-}
-@inproceedings{kipf2017semi,
-  title={Semi-supervised classification with graph convolutional networks},
-  author={Kipf, Thomas N. and Welling, Max},
-  booktitle={International Conference on Learning Representations (ICLR)}, year={2017}
-}
-@inproceedings{li2018diffusion,
-  title={Diffusion convolutional recurrent neural network: Data-driven traffic forecasting},
-  author={Li, Yaguang and Yu, Rose and Shahabi, Cyrus and Liu, Yan},
-  booktitle={International Conference on Learning Representations (ICLR)}, year={2018}
-}
-@inproceedings{wu2020connecting,
-  title={Connecting the dots: Multivariate time series forecasting with graph neural networks},
-  author={Wu, Zonghan and Pan, Shirui and Long, Guodong and Jiang, Jing and Chang, Xiaojun and Zhang, Chengqi},
-  booktitle={Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining},
-  pages={753--763}, year={2020}
-}
-@article{reichstein2019deep,
-  title={Deep learning and process understanding for data-driven {E}arth system science},
-  author={Reichstein, Markus and Camps-Valls, Gustau and Stevens, Bjorn and Jung, Martin and Denzler, Joachim and Carvalhais, Nuno and Prabhat},
-  journal={Nature},
-  volume={566}, number={7743}, pages={195--204}, year={2019}
-}
-@article{karpatne2017theory,
-  title={Theory-guided data science: A new paradigm for scientific discovery from data},
-  author={Karpatne, Anuj and Atluri, Gowtham and Faghmous, James H. and Steinbach, Michael and Banerjee, Arindam and Ganguly, Auroop and Shekhar, Shashi and Samatova, Nagiza and Kumar, Vipin},
-  journal={IEEE Transactions on Knowledge and Data Engineering},
-  volume={29}, number={10}, pages={2318--2331}, year={2017}
+@article{kirkpatrick2017overcoming,
+  title={Overcoming catastrophic forgetting in neural networks},
+  author={Kirkpatrick, James and Pascanu, Razvan and Rabinowitz, Neil and Veness, Joel and Desjardins, Guillaume and Rusu, Andrei A. and others},
+  journal={Proceedings of the National Academy of Sciences}, volume={114}, number={13}, pages={3521--3526}, year={2017}
 }
 
-% ======================= ML weather forecasting, data ===================
-@article{lam2023learning,
-  title={Learning skillful medium-range global weather forecasting},
-  author={Lam, Remi and Sanchez-Gonzalez, Alvaro and Willson, Matthew and Wirnsberger, Peter and Fortunato, Meire and Alet, Ferran and others},
-  journal={Science},
-  volume={382}, number={6677}, pages={1416--1421}, year={2023}
+% ---------------- Data and regional forecasting ------------------------
+@article{hersbach2020era5,
+  title={The {ERA5} global reanalysis},
+  author={Hersbach, Hans and Bell, Bill and Berrisford, Paul and Hirahara, Shoji and Hor{\'a}nyi, Andr{\'a}s and Mu{\~n}oz-Sabater, Joaqu{\'\i}n and others},
+  journal={Quarterly Journal of the Royal Meteorological Society}, volume={146}, number={730}, pages={1999--2049}, year={2020}
 }
-@article{bi2023accurate,
-  title={Accurate medium-range global weather forecasting with {3D} neural networks},
-  author={Bi, Kaifeng and Xie, Lingxi and Zhang, Hengheng and Chen, Xin and Gu, Xiaotao and Tian, Qi},
-  journal={Nature},
-  volume={619}, number={7970}, pages={533--538}, year={2023}
+@article{rani2021imdaa,
+  title={{IMDAA}: High-resolution satellite-era reanalysis for the {I}ndian monsoon region},
+  author={Rani, S. Indira and Arulalan, T. and George, John P. and Rajagopal, E. N. and Renshaw, Richard and Maycock, Adam and Barker, Dale M. and Rajeevan, M.},
+  journal={Journal of Climate}, volume={34}, number={12}, pages={5109--5133}, year={2021}
 }
-@article{pathak2022fourcastnet,
-  title={{FourCastNet}: A global data-driven high-resolution weather model using adaptive {F}ourier neural operators},
-  author={Pathak, Jaideep and Subramanian, Shashank and Harrington, Peter and Raja, Sanjeev and Chattopadhyay, Ashesh and Mardani, Morteza and others},
-  journal={arXiv preprint arXiv:2202.11214}, year={2022}
-}
-@article{price2025probabilistic,
-  title={Probabilistic weather forecasting with machine learning},
-  author={Price, Ilan and Sanchez-Gonzalez, Alvaro and Alet, Ferran and Andersson, Tom R. and El-Kadi, Andrew and Masters, Dominic and others},
-  journal={Nature},
-  volume={637}, number={8044}, pages={84--90}, year={2025}
-}
-@article{keisler2022forecasting,
-  title={Forecasting global weather with graph neural networks},
-  author={Keisler, Ryan},
-  journal={arXiv preprint arXiv:2202.07575}, year={2022}
-}
-@article{rasp2020weatherbench,
-  title={{WeatherBench}: A benchmark data set for data-driven weather forecasting},
-  author={Rasp, Stephan and Dueben, Peter D. and Scher, Sebastian and Weyn, Jonathan A. and Mouatadid, Soukayna and Thuerey, Nils},
-  journal={Journal of Advances in Modeling Earth Systems},
-  volume={12}, number={11}, pages={e2020MS002203}, year={2020}
-}
-@article{rasp2024weatherbench2,
-  title={{WeatherBench} 2: A benchmark for the next generation of data-driven global weather models},
-  author={Rasp, Stephan and Hoyer, Stephan and Merose, Alexander and Langmore, Ian and Battaglia, Peter and Russell, Tyler and others},
-  journal={Journal of Advances in Modeling Earth Systems},
-  volume={16}, number={6}, pages={e2023MS004019}, year={2024}
-}
-@article{schultz2021can,
-  title={Can deep learning beat numerical weather prediction?},
-  author={Schultz, M. G. and Betancourt, C. and Gong, B. and Kleinert, F. and Langguth, M. and Leufen, L. H. and Mozaffari, A. and Stadtler, S.},
-  journal={Philosophical Transactions of the Royal Society A},
-  volume={379}, number={2194}, pages={20200097}, year={2021}
-}
-@article{benbouallegue2024rise,
-  title={The rise of data-driven weather forecasting: A first statistical assessment of machine learning-based weather forecasts in an operational-like context},
-  author={Ben Bouall{\`e}gue, Zied and Clare, Mariana C. A. and Magnusson, Linus and Gasc{\'o}n, Estibaliz and Maier-Gerber, Michael and Janou{\v{s}}ek, Martin and others},
-  journal={Bulletin of the American Meteorological Society},
-  volume={105}, number={6}, pages={E864--E883}, year={2024}
-}
-@article{lang2024aifs,
-  title={{AIFS} -- {ECMWF}'s data-driven forecasting system},
-  author={Lang, Simon and Alexe, Mihai and Chantry, Matthew and Dramsch, Jesper and Pinault, Florian and Raoult, Baudouin and others},
-  journal={arXiv preprint arXiv:2406.01465}, year={2024}
+@article{smith2011integrated,
+  title={The {I}ntegrated {S}urface {D}atabase: Recent developments and partnerships},
+  author={Smith, Adam and Lott, Neal and Vose, Russ},
+  journal={Bulletin of the American Meteorological Society}, volume={92}, number={6}, pages={704--708}, year={2011}
 }
 @article{oskarsson2023graph,
   title={Graph-based neural weather prediction for limited area modeling},
   author={Oskarsson, Joel and Landelius, Tomas and Lindsten, Fredrik},
   journal={arXiv preprint arXiv:2309.17370}, year={2023}
-}
-@article{hersbach2020era5,
-  title={The {ERA5} global reanalysis},
-  author={Hersbach, Hans and Bell, Bill and Berrisford, Paul and Hirahara, Shoji and Hor{\'a}nyi, Andr{\'a}s and Mu{\~n}oz-Sabater, Joaqu{\'\i}n and others},
-  journal={Quarterly Journal of the Royal Meteorological Society},
-  volume={146}, number={730}, pages={1999--2049}, year={2020}
-}
-@article{rani2021imdaa,
-  title={{IMDAA}: High-resolution satellite-era reanalysis for the {I}ndian monsoon region},
-  author={Rani, S. Indira and Arulalan, T. and George, John P. and Rajagopal, E. N. and Renshaw, Richard and Maycock, Adam and Barker, Dale M. and Rajeevan, M.},
-  journal={Journal of Climate},
-  volume={34}, number={12}, pages={5109--5133}, year={2021}
-}
-@article{smith2011integrated,
-  title={The {I}ntegrated {S}urface {D}atabase: Recent developments and partnerships},
-  author={Smith, Adam and Lott, Neal and Vose, Russ},
-  journal={Bulletin of the American Meteorological Society},
-  volume={92}, number={6}, pages={704--708}, year={2011}
-}
-
-% ======================= Software =====================================
-@inproceedings{paszke2019pytorch,
-  title={{PyTorch}: An imperative style, high-performance deep learning library},
-  author={Paszke, Adam and Gross, Sam and Massa, Francisco and Lerer, Adam and Bradbury, James and Chanan, Gregory and others},
-  booktitle={Advances in Neural Information Processing Systems},
-  volume={32}, year={2019}
-}
-@inproceedings{fey2019fast,
-  title={Fast graph representation learning with {PyTorch} {G}eometric},
-  author={Fey, Matthias and Lenssen, Jan Eric},
-  booktitle={ICLR Workshop on Representation Learning on Graphs and Manifolds}, year={2019}
-}
-@article{harris2020array,
-  title={Array programming with {NumPy}},
-  author={Harris, Charles R. and Millman, K. Jarrod and van der Walt, St{\'e}fan J. and Gommers, Ralf and Virtanen, Pauli and Cournapeau, David and others},
-  journal={Nature},
-  volume={585}, number={7825}, pages={357--362}, year={2020}
-}
-@article{virtanen2020scipy,
-  title={{SciPy} 1.0: Fundamental algorithms for scientific computing in {P}ython},
-  author={Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and Haberland, Matt and Reddy, Tyler and Cournapeau, David and others},
-  journal={Nature Methods},
-  volume={17}, number={3}, pages={261--272}, year={2020}
-}
-@article{pedregosa2011scikit,
-  title={Scikit-learn: Machine learning in {P}ython},
-  author={Pedregosa, Fabian and Varoquaux, Ga{\"e}l and Gramfort, Alexandre and Michel, Vincent and Thirion, Bertrand and Grisel, Olivier and others},
-  journal={Journal of Machine Learning Research},
-  volume={12}, pages={2825--2830}, year={2011}
-}
-@article{montiel2021river,
-  title={River: Machine learning for streaming data in {P}ython},
-  author={Montiel, Jacob and Halford, Max and Mastelini, Saulo Martiello and Bolmier, Geoffrey and Sourty, Raphael and Vaysse, Robin and others},
-  journal={Journal of Machine Learning Research},
-  volume={22}, number={110}, pages={1--8}, year={2021}
 }

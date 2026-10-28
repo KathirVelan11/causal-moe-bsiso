@@ -1,0 +1,29 @@
+\documentclass[border=4pt]{standalone}
+\input{wfstyle}
+\begin{document}
+\begin{tikzpicture}
+\def\W{3.35cm}\def\H{2.0cm}\def\dx{4.15}
+\card{d}{0,0}{cBlue}{1}{India data}{\bul IMDAA: hourly, $\sim$12 km\\\bul ERA5: boundary context\\\hphantom{\bul}and large-scale drivers\\\bul NOAA ISD: stations}{\W}{\H}
+\card{pp}{\dx,0}{cTeal}{2}{Preprocess \& mesh}{\bul regrid, align hours\\\bul training-only scaling\\\bul regional graph mesh\\\hphantom{\bul}over India}{\W}{\H}
+\card{cd}{2*\dx,0}{cOrange}{3}{Causal detector}{\bul Phase 1 pipeline with\\\hphantom{\bul}lags $\tau\ge$ lead\\\bul decoys, speed mask,\\\hphantom{\bul}persistence checks}{\W}{\H}
+\card{bb}{3*\dx,0}{cPurple}{4}{Shared GNN backbone}{\bul message passing on\\\hphantom{\bul}the regional mesh\\\bul hourly surface state\\\hphantom{\bul}encoding}{\W}{\H}
+\card{gx}{3*\dx,-3.4}{cGreen}{5}{Causal gate + experts}{\bul region-specific experts\\\bul gate conditioned on\\\hphantom{\bul}validated drivers\\\bul sparse top-$k$ routing}{\W}{\H}
+\card{fc}{2*\dx,-3.4}{cBlue}{6}{Forecast 1--72 h}{\bul autoregressive roll-out\\\bul T2m, RH2m, u10, v10,\\\hphantom{\bul}MSLP; station T2m,\\\hphantom{\bul}dewpoint}{\W}{\H}
+\card{sv}{\dx,-3.4}{cTeal}{7}{Station validation}{\bul verify against ISD\\\hphantom{\bul}observations\\\bul RMSE, MAE, bias by\\\hphantom{\bul}lead and region}{\W}{\H}
+\card{bm}{0,-3.4}{cPurple}{8}{Benchmark}{\bul GraphCast, WeatherNext\\\bul same data, horizons\\\hphantom{\bul}and protocol\\\bul regime-stratified scores}{\W}{\H}
+\card{dm}{2*\dx,-6.75}{cRed}{9}{Drift monitor}{\bul error + structure\\\hphantom{\bul}channels per region}{\W}{1.2cm}
+\card{lc}{3*\dx,-6.75}{cOrange}{10}{Adapt affected expert}{\bul retrain / spawn /\\\hphantom{\bul}reactivate only it}{\W}{1.2cm}
+\card{gs}{0,-6.75}{cGray}{11}{Global scaling (future)}{\bul larger mesh, more\\\hphantom{\bul}regimes and experts}{\W}{1.2cm}
+\foreach \a/\b in {d/pp,pp/cd,cd/bb}{\draw[flow] (\a.east) -- (\b.west);}
+\draw[flow] (bb.south) -- (gxh.north);
+\foreach \a/\b in {gx/fc,fc/sv,sv/bm}{\draw[flow] (\a.west) -- (\b.east);}
+\draw[flow] (cd.south) -- ++(0,-0.55) -| node[note, above, pos=0.25]{validated drivers $\mathbf{c}$} ([xshift=-0.9cm]gxh.north);
+\draw[loop] (fc.south) -- node[note, right]{errors} (dmh.north);
+\draw[loop] (dm.east) -- (lc.west);
+\draw[loop] (lch.north) -- (gx.south);
+\draw[flow, dashed] (bm.south) -- node[note, right]{after regional\\validation} (gsh.north);
+\begin{scope}[on background layer]
+\node[band, draw=cBlue!35, fill=cBlue!3, fit=(dh)(bb)(gx)(bm), label={[font=\small\bfseries\color{cBlue}]above:Phase 2: India-focused hourly forecasting with causally gated experts}] {};
+\end{scope}
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,23 @@
+\documentclass[border=4pt]{standalone}
+\input{wfstyle}
+\begin{document}
+\begin{tikzpicture}
+\def\W{3.35cm}\def\H{1.75cm}\def\dx{4.15}
+\card{a}{0,0}{cOrange}{A}{Build}{PCMCI graph over\\300 nodes, lags 1--60\\(1979--2012 only)}{\W}{\H}
+\card{b}{\dx,0}{cRed}{B}{Validate}{decoys, speed mask,\\top-$k$, resolution\\persistence; freeze}{\W}{\H}
+\card{c}{2*\dx,0}{cBlue}{C}{Use}{graph as splitter prior\\vs matched controls on\\2013--2022}{\W}{\H}
+\card{d}{3*\dx,0}{cGreen}{D}{Keep current}{drift detection and\\expert lifecycle\\(retrain/spawn/reactivate)}{\W}{\H}
+\foreach \x/\y in {a/b,b/c,c/d}{\draw[flow] (\x.east) -- (\y.west);}
+\card{p1}{0,-3.9}{cPurple}{1}{India backbone}{shared GNN, hourly\\surface data, regional\\experts + causal gate}{\W}{\H}
+\card{p2}{\dx,-3.9}{cTeal}{2}{Forecast \& validate}{autoregressive to 72 h;\\station-level checks\\against ISD}{\W}{\H}
+\card{p3}{2*\dx,-3.9}{cPurple}{3}{Benchmark}{GraphCast and\\WeatherNext; same data\\and protocol}{\W}{\H}
+\card{p4}{3*\dx,-3.9}{cGray}{4}{Global scaling}{larger mesh, more\\regimes, larger\\expert pool (future)}{\W}{\H}
+\foreach \x/\y in {p1/p2,p2/p3}{\draw[flow] (\x.east) -- (\y.west);}
+\draw[flow, dashed] (p3.east) -- (p4.west);
+\begin{scope}[on background layer]
+\node[band, draw=cBlue!35, fill=cBlue!3, fit=(ah)(d), label={[font=\small\bfseries\color{cBlue}]above:Phase 1: validated causal graph for BSISO-season OLR + adaptive experts (this thesis)}] (P1) {};
+\node[band, draw=cPurple!35, fill=cPurple!3, fit=(p1h)(p4), label={[font=\small\bfseries\color{cPurple}]below:Phase 2: India-focused regional forecasting (extension)}] (P2) {};
+\end{scope}
+\draw[flow, line width=1.8pt, color=cInk] (P1.south) -- node[tag, draw=cInk, fill=white, text=cInk]{validated components and lessons on lags, priors and drift} (P2.north);
+\end{tikzpicture}
+\end{document}

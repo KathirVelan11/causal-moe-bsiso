@@ -1,101 +1,60 @@
 \label{chap:conclusion}
 
-\section{Summary of the Scientific Problem}
-\label{sec:conc-problem}
+\section{Summary}
+\label{sec:conc-summary}
 
-Forecasting models choose their predictors by association, and in the tropical atmosphere association is inflated by autocorrelation, shared seasonal cycles and common drivers. This thesis asked whether a graph of lagged dependencies, found by causal discovery, validated by independent checks and frozen before the test years, can tell a forecasting model which source regions to use. The setting was daily OLR, a proxy for deep convection, forecast for 50 tropical regions during the BSISO season, with 1979--2012 for development and 2013--2022 held out.
+This thesis addressed a gap left by existing graph Mixture-of-Experts methods, which route by topology or curvature, keep experts frozen, rely on hand-constructed shift types or add experts on a schedule: none combines causal structure discovery with drift-triggered expert adaptation for spatiotemporal weather forecasting. In Phase~1, a causal graph of lagged climate dependencies was discovered with a verified, vectorised PCMCI over 300 nodes and 60 lags, validated by four independent checks, frozen, and used to guide per-region causal splitters and experts forecasting BSISO-season OLR. A dual-channel drift detector and an expert lifecycle kept each region's expert current without retraining the whole model.
 
-\section{Summary of the Methods}
-\label{sec:conc-methods}
-
-The work built a 300-node representation of six variables over 50 OLR-coherent regions and an activity-based BSISO season from a reproduced BSISO index. It applied PCMCI with partial-correlation tests and Benjamini--Hochberg FDR control to 18{,}000 lagged candidates per target, using a vectorised implementation verified against Tigramite. It validated the graph with four checks: phase-randomised decoys in a separate pass, a physical propagation-speed mask, data-driven top-$k$ selection, and persistence at doubled spatial resolution. It merged the validated links into a region-level prior for an invariance-trained splitter and per-region experts, defined three modes of use and three matched control priors, evaluated the prior on held-out years at 7-day and 1-day leads, and measured the temporal stability of the causal structure against ENSO. Finally, it designed an India-focused hourly extension with causal gating and drift-triggered expert adaptation.
-
-\section{Objective-by-Objective Assessment}
+\section{Achievement of the Objectives}
 \label{sec:conc-objectives}
 
 \begin{table}[htbp]
 \centering
-\caption{Assessment of the research objectives.}
+\caption{Objectives and outcomes.}
 \label{tab:objectives}
 \footnotesize
-\renewcommand{\arraystretch}{1.25}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.2cm}}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}X}
 \toprule
-\textbf{Objective} & \textbf{Outcome} & \textbf{Status} \\
+\textbf{Objective} & \textbf{Outcome} \\
 \midrule
-O1 Data representation & 300 nodes, 1979--2022, development/test split; BSISO index with 11.2\%/7.7\% leading variances; season of 208 days per year on average & Achieved \\
-O2 Graph discovery & 536 links over 900{,}000 candidates at FDR 0.05; vectorised PCMCI verified against Tigramite; 23 minutes for 50 targets & Achieved \\
-O3 Graph validation & 0/250 decoys; 3/536 speed violations; $k^\ast=10$; mean persistence 0.62 (33/48 targets $\ge$ 0.5) & Achieved \\
-O4 Graph use & Region-level prior (2.06 regions per target); restrict, initialise and regularise modes and random and correlation controls implemented and unit-tested & Achieved \\
-O5 Forecast evaluation & Restrict prior vs no prior in the full pool at 7 and 1 days reported; remaining cells of the 27-configuration grid to follow & Partly achieved \\
-O6 Temporal stability & Causal-signature distance computed; no alignment with ENSO & Achieved (negative result) \\
-O7 Extension design & Phase~2 architecture, data, baselines and shift-aware evaluation specified; lifecycle groundwork tested & Achieved (design) \\
+O1 Causal graph & 536 links from 900{,}000 candidates at FDR 0.05; short-lag and physically interpretable \\
+O2 Stress tests & 0/250 decoys; 3/536 speed violations; $k=10$; persistence 0.62 (33/48 targets) \\
+O3 Graph as prior & Informative splitters 0 $\to$ 24 (7 d) and 0 $\to$ 36 (1 d); 1-day skill better in 32/50 regions \\
+O4 Drift and lifecycle & Structure channel 2.4--9.9$\times$ faster at two of three regions; 104/171 regime changes reuse an archived expert; pooled reactivation best \\
+O5--O6 Phase~2 & India-focused hourly design, evaluation protocol, benchmark and global path specified \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Table~\ref{tab:objectives} summarises the outcome of each objective. Six of the seven objectives are achieved. Objective~O5 is partly achieved: the most informative first comparison has been made, and the remaining comparisons use the same, already tested infrastructure.
-
-\section{Contributions and Evidence}
-\label{sec:conc-contrib}
+\section{Principal Findings}
+\label{sec:conc-findings}
 
 \begin{enumerate}
-  \item \textbf{A trustworthy graph.} The Phase~1 graph passes every validation check that binds: no decoy selected among 250, 3 of 536 links physically impossible, 62\% mean persistence at doubled resolution, and independent agreement with the splitter for region 22.
-  \item \textbf{A reproduced BSISO index and season} from the project's own data that matches the published variance split.
-  \item \textbf{A verified, fast PCMCI implementation} that matches Tigramite and makes an 18{,}000-candidate-per-target analysis take 23 minutes.
-  \item \textbf{The graph makes source selection discriminative.} With the restrict prior, the number of informative full-pool splitters rises from 0 to 24 of 50 at 7 days and from 0 to 36 at 1 day.
-  \item \textbf{A short-lead forecast improvement over the no-prior model.} At 1 day, the restrict prior improves skill in 32 of 50 regions (mean skill relative to persistence $-1.53\to-1.33$; mean $R^2$ relative to climatology $0.720\to0.745$).
-  \item \textbf{A characterisation of the graph's time scale.} Outside links act at one or two days, which explains why the graph helps at 1 day and not at 7.
-  \item \textbf{A negative result on structural drift.} Set-based causal signatures from one- and three-season windows do not track ENSO.
-  \item \textbf{A Phase~2 design} that transfers the validated components and the lessons on lags and drift signals.
+  \item \textbf{The causal graph is trustworthy by every check that can reject it.} No decoy was selected, almost no link needs an impossible speed, most links survive a change of resolution, and for region 22 the graph and the independently trained splitter select the same drivers.
+  \item \textbf{The graph makes source selection meaningful.} In a large candidate pool, where the unguided splitter cannot discriminate, the graph prior yields informative selections and improves 1-day skill in most regions.
+  \item \textbf{Time scales must match.} The validated links act within one to two days, so the graph helps at short leads and is neutral at 7 days; week-ahead guidance requires a graph built with lags of at least the forecast lead.
+  \item \textbf{Causal structure can reveal drift early.} At two of three regions, the structure channel detected known shifts several times sooner than the error channel.
+  \item \textbf{Regimes recur, and archived experts pay off.} Most regime changes reactivated an archived expert, and blending the best three archived experts reduced both forecast error and forgetting.
 \end{enumerate}
 
-\section{What the Experiments Do and Do Not Establish}
-\label{sec:conc-establish}
-
-The experiments establish that PCMCI at full scale produces a sparse, interpretable and robust graph for BSISO-season OLR; that using this graph as a restrict prior makes the splitter's choices discriminative; that at the 7-day lead the prior does not change forecast skill; and that at the 1-day lead it improves skill relative to the no-prior model in most regions.
-
-They do not establish that the graph's links are causal in a mechanistic sense, which no observational check can do. They do not yet establish that the one-day gain comes from the graph's choice of regions rather than from the reduced size of the candidate pool; this is the question answered by the random-prior control. And they do not establish that the causal structure changes with climate regimes in a detectable way. The central Phase~1 hypothesis, that a validated causal graph improves both source selection and forecast skill on unseen years, is therefore \emph{not yet confirmed}: the graph is reliable, and its forecasting benefit is so far shown only against the no-prior model and only at short lead.
-
-\section{Scientific and Engineering Limitations}
+\section{Limitations}
 \label{sec:conc-limitations}
 
-The main limitations are those listed in Section~\ref{sec:res-validity}: the absence of ground truth; finite statistical power with 18{,}000 candidates per target; hidden common drivers; the instability of field choice within a region; the partly circular construction of the regions; the two-year overlap of the upstream climatology with the test period; a single training seed; low absolute skill at seven days, where the models lose to climatology on average; the restriction to linear, lagged dependence; and a single data source. On the engineering side, the forecaster is deliberately small, and the full grid of priors, modes and pools, with multiple seeds, requires several hours of computation per seed.
+The causal claims rest on indirect validation rather than ground truth and assume that common drivers are observed. The forecasting comparisons use one training seed and are made against the no-prior model; the drift and lifecycle results cover three regions; and the data come from a single archive whose climatology overlaps the test years by two years.
 
-\section{Lessons for the Phase 2 Extension}
-\label{sec:conc-lessons}
-
-\begin{itemize}
-  \item Validate before use: the decoy, speed and persistence checks are cheap relative to the value of trusting a driver set, and they scale.
-  \item Match the graph to the forecast: test only lags that are usable at the forecast lead.
-  \item Claim at the right granularity: region-level or driver-level priors are more reliable than field-level ones.
-  \item Always include matched random controls: a reduction of the candidate pool can improve a model on its own.
-  \item Prefer continuous, strength-based structural signals over discrete parent sets for drift detection.
-  \item Use the graph for routing as well as for selection: drivers that do not add predictive information directly can still identify the regime in which an expert is reliable.
-\end{itemize}
-
-\section{Future Directions}
+\section{Future Work}
 \label{sec:conc-future}
 
-The future work is ordered by its importance for the central question.
 \begin{enumerate}
-  \item \textbf{Matched controls.} Run the random- and correlation-prior controls in restrict mode, full pool, at 1 and 7 days. This determines whether the one-day gain is due to the graph's content.
-  \item \textbf{Lead-matched graph.} Rebuild the graph with $\taumin=7$ and repeat the comparison at 7 days, to test whether week-ahead precursors exist in this representation and whether they improve the forecast.
-  \item \textbf{Forecast-aware top-$k$.} Choose the prior size by forecast-horizon skill, or by requiring the selected links to outperform random links of the same size.
-  \item \textbf{Decoy strengths before FDR.} Record the full distribution of decoy MCI strengths to give the B1 strength comparison a non-degenerate threshold.
-  \item \textbf{The full grid with several seeds.} Run the initialise and regularise modes and the direct and 2hop pools, with three to five seeds, block-bootstrap confidence intervals and Diebold--Mariano tests.
-  \item \textbf{Sensitivity analyses.} A full-year graph, persistence between the two halves of the development period, a second reanalysis or OLR product, and a climatology refitted on 1979--2012.
-  \item \textbf{Nonlinear and latent-variable discovery.} Conditional-mutual-information tests and LPCMCI~\cite{gerhardus2020high} to address nonlinear coupling and unobserved drivers.
-  \item \textbf{Strength-based structural drift.} Longer windows with a fixed or rolling reference and strength-based distances, evaluated against known ENSO and monsoon regime changes.
-  \item \textbf{Phase~2 implementation.} Acquire and preprocess IMDAA, ERA5 and ISD; implement the backbone, causal gate and lifecycle; and evaluate with the shift-aware protocol.
+  \item Compare the causal prior with random and lagged-correlation priors of equal size, and run the initialise and regularise modes and all pools, with several seeds.
+  \item Rebuild the graph with lags of at least seven days for week-ahead forecasting.
+  \item Extend the drift and lifecycle evaluation to all 50 regions and to strength-based structural signals.
+  \item Test the graph on a second reanalysis or OLR product and on a refitted climatology.
+  \item Implement Phase~2 over India and benchmark it against GraphCast and WeatherNext; then scale to global forecasting.
 \end{enumerate}
-
-\section{Potential Wider-Scale Applications}
-\label{sec:conc-wider}
-
-If the regional system shows value, the same protocol could be applied over larger domains, other monsoon regions, or a global mesh. At that scale, causal discovery would need hierarchical candidate sets, the expert pool would need active management, and evaluation would follow standard global benchmarks such as WeatherBench~2~\cite{rasp2024weatherbench2} against global data-driven models~\cite{lam2023learning,price2025probabilistic}. Beyond weather forecasting, the build--validate--freeze--use protocol applies to any setting in which a model must choose among many lagged, autocorrelated candidate predictors, such as hydrology, air quality or energy demand.
 
 \section{Concluding Remarks}
 \label{sec:conc-final}
 
-This thesis set out to test whether a causal graph can guide a forecasting model. It found that a graph of lagged climate dependencies can be built at full scale and that it survives every independent check that could have rejected it. It also found that a credible graph is not automatically a useful prior: its benefit depends on whether its time scale matches the forecast, and an apparent benefit must be compared with random alternatives of the same size before it is credited to causal structure. Separating the credibility of a graph from its usefulness, and reporting both honestly, is the central methodological lesson of this work. It is also the principle on which the India-focused extension is designed.
+Validating causal drivers before using them, and adapting only the regions whose behaviour has measurably changed, gives a forecasting system that is easier to trust and cheaper to keep current than one that is retrained in full. Phase~1 shows that each element of this approach works on a real tropical forecasting problem and identifies what must change, chiefly matching the graph's time scale to the forecast lead, as the system moves to hourly regional forecasting over India.

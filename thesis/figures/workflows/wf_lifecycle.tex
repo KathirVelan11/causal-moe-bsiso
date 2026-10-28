@@ -1,0 +1,37 @@
+\documentclass[border=4pt]{standalone}
+\input{wfstyle}
+\tikzset{dec/.style={diamond, aspect=2.2, draw=cGray, line width=0.9pt, fill=white, font=\scriptsize\bfseries, inner sep=1.5pt, align=center},
+         act/.style={rectangle, rounded corners=3pt, draw=#1, fill=#1!8, line width=0.9pt, font=\scriptsize, align=center, text width=2.6cm, minimum height=0.95cm}}
+\begin{document}
+\begin{tikzpicture}
+\def\W{3.2cm}
+\card{ex}{0,0}{cBlue}{1}{Active expert}{forecasts region $r$;\\error $e_t$ logged daily}{\W}{1.1cm}
+\card{c1}{4.3,1.2}{cPurple}{2a}{Channel 1: error}{ADWIN on the\\forecast-error stream}{\W}{1.1cm}
+\card{c2}{4.3,-1.2}{cPurple}{2b}{Channel 2: structure}{STARS on causal-\\signature distance}{\W}{1.1cm}
+\node[dec] (fuse) at (8.4,-0.25) {Fuse\\OR / AND};
+\draw[flow] (ex.east) -- ++(0.35,0) |- (c1.west);
+\draw[flow] (ex.east) -- ++(0.35,0) |- (c2.west);
+\draw[flow] (c1.east) -| (fuse.north);
+\draw[flow] (c2.east) -| (fuse.south);
+\node[dec] (alarm) at (11.6,-0.25) {Drift\\alarm?};
+\draw[flow] (fuse) -- (alarm);
+\node[act=cGray] (t0) at (11.6,1.75) {\textbf{Tier 0:} keep the\\current expert};
+\draw[flow] (alarm) -- node[note, right]{no} (t0);
+\node[act=cBlue] (t1) at (14.9,-0.25) {\textbf{Tier 1:} retrain\\on recent data};
+\draw[flow] (alarm) -- node[note, above]{minor} (t1);
+\node[act=cOrange] (arch) at (11.6,-3.4) {\textbf{Tier 2:} hibernate\\expert + signature};
+\draw[flow] (alarm) -- node[note, right]{regime\\change} (arch);
+\node[dec] (match) at (8.0,-3.4) {Archive\\match\\$\ge$ 0.9?};
+\draw[flow] (arch) -- (match);
+\node[act=cGreen] (react) at (8.0,-5.5) {\textbf{Reactivate}\\best match, or blend the\\top-3 by similarity};
+\node[act=cRed] (spawn) at (4.3,-3.4) {\textbf{Spawn}\\fresh expert};
+\draw[flow] (match) -- node[note, right]{yes} (react);
+\draw[flow] (match) -- node[note, above]{no} (spawn);
+\draw[loop] (react.west) -| node[note, pos=0.75, left]{new active\\expert} (ex.south);
+\draw[loop] (spawn.west) -| (ex.south);
+\begin{scope}[on background layer]
+\node[band, draw=cPurple!35, fill=cPurple!3, fit=(c1h)(c2)(fuse), label={[font=\small\bfseries\color{cPurple}]above:Dual-channel drift detection}] {};
+\node[band, draw=cOrange!35, fill=cOrange!3, fit=(arch)(match)(react)(spawn), label={[font=\small\bfseries\color{cOrange}]below:Expert lifecycle: archive, reactivate or spawn}] {};
+\end{scope}
+\end{tikzpicture}
+\end{document}

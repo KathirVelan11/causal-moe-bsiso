@@ -3,22 +3,14 @@
 B.Tech thesis (Department of Artificial Intelligence, Amrita Vishwa Vidyapeetham,
 Coimbatore), built on the department's LaTeX template (`Thesis_Template___Amrita_AID`).
 
-The compiled thesis is `mythesis.pdf` (135 pages).
+The compiled thesis is `mythesis.pdf` (67 pages, 35 references).
 
-## Before submission: fill in your details
+## Before submission
 
-All personal and official fields are placeholders in **one file**:
-`frontmatter/details.tex` (student names, roll numbers, team number, advisor
-name and designation, submission month). The title page, bonafide certificate,
-declaration and acknowledgements all read from it. If your team does not have
-four members, delete the unused lines in `mythesis.tex`,
-`frontmatter/certificate.tex`, `frontmatter/declaration.tex` and
-`frontmatter/acknowledgements.tex`.
-
-Also fill in the fields marked `[confirm]` in Chapter 3 (Table 3.2: data
-archive provenance and licence) and Appendix B (Table B.4: licences). The
-advisor-specific acknowledgement is a bracketed placeholder in
-`frontmatter/acknowledgements.tex`.
+Personal and official fields are in **one file**, `frontmatter/details.tex`.
+Names, roll numbers, team number (AB 13) and advisor (Dr. Vinith) are filled in
+from the S7 review deck. Still to fill: the advisor's **designation** and the
+**submission month/year**.
 
 ## How to build the PDF
 
@@ -66,47 +58,39 @@ Packages beyond the template: `lmodern`, `microtype`, `bm`, `mathtools`,
 
 ```
 thesis/
-  mythesis.tex             main file (template layout; \input's everything)
-  preamble.tex             template packages + additions + notation macros
-  mybib.bib                bibliography (BibTeX, ~120 entries; only cited ones print)
-  frontmatter/
-    details.tex            <-- your names, roll numbers, advisor, date
-    certificate.tex        bonafide certificate (template wording)
-    declaration.tex        declaration + countersignature (template wording)
-    acknowledgements.tex, abbreviations.tex, symbols.tex, abstract.tex
-  chapters/
-    chapter1_introduction.tex
-    chapter2_literature_review.tex
-    chapter3_problem_and_data.tex
-    chapter4_pcmci_methodology.tex
-    chapter5_graph_validation_moe.tex
-    chapter6_implementation_experiments.tex
-    chapter7_results_discussion.tex
-    chapter8_phase2_extension.tex
-    chapter9_conclusion.tex
-  appendices/
-    appendixA_notation_derivations.tex
-    appendixB_configuration.tex
-    appendixC_reproducibility.tex
-  figures/                 result figures (PNG) from code/results/phase1 and phase9
-  images/univA.png         university logo (from the template)
-  scripts/make_stage_c_figures.py   builds figures/10_stage_c_lead1.png
-  docs/
-    research_decisions_and_gaps.md
-    evidence_and_claim_audit.md
-    compilation_qc_report.md
+  mythesis.tex            main file (template layout)
+  preamble.tex            template packages + additions
+  mybib.bib               35 references (the 7 core review papers first)
+  frontmatter/            details.tex (names etc.), certificate, declaration,
+                          acknowledgements, abbreviations, symbols, abstract
+  chapters/               chapter1 ... chapter9
+  appendices/             appendixA_reproducibility.tex
+  figures/                result figures (PNG); ppt_* are the review-deck figures
+  figures/workflows/      workflow diagrams: TikZ sources (*.tex), PDFs used by
+                          the thesis, and 300-dpi PNGs in png/ for slides
+  scripts/                make_stage_c_figures.py, make_lifecycle_figure.py
+  docs/                   decisions/gaps, claim audit, QC report
 ```
 
-All schematic diagrams are drawn in TikZ inside the chapter files. All result
-figures are PNGs generated from the project's saved result files (see
-Appendix C, Table C.1).
+## Workflow images
 
-## Regenerating the 1-day Stage C figure
-
-From the repository root, with the `phase1-causal-graph` results available:
+`figures/workflows/` holds five diagrams in one visual style:
+`wf_overview` (two-phase roadmap), `wf_phase1` (Phase 1 pipeline),
+`wf_validation` (B1–B4 checks and the three ways to use the graph),
+`wf_lifecycle` (drift detection and expert lifecycle) and `wf_phase2`
+(India-focused Phase 2). Edit a `.tex` file and rebuild it with:
 
 ```bash
-python thesis/scripts/make_stage_c_figures.py code/results/phase1 thesis/figures
+cd figures/workflows && pdflatex wf_phase1.tex && pdftoppm -r 300 -png -singlefile wf_phase1.pdf png/wf_phase1
+```
+
+## Regenerating generated figures
+
+From the repository root:
+
+```bash
+python thesis/scripts/make_stage_c_figures.py code/results/phase1 thesis/figures   # phase1-causal-graph branch
+python thesis/scripts/make_lifecycle_figure.py code/results thesis/figures
 ```
 
 ## Template conventions kept
@@ -122,3 +106,4 @@ python thesis/scripts/make_stage_c_figures.py code/results/phase1 thesis/figures
 - The template file `images/univA.png` is referenced with the correct
   capitalisation (the template's certificate used `univa.png`, which fails on
   case-sensitive systems such as Linux and Overleaf).
+- The list of algorithms was dropped to keep the thesis near 70 pages.

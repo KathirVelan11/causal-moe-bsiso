@@ -1,197 +1,83 @@
 \label{chap:intro}
 
-\section{Climate Variability and the Need for Useful Regional Forecasts}
+\section{Background and Motivation}
 \label{sec:intro-motivation}
 
-Weather forecasts are traditionally separated into two regimes. At short range, up to roughly ten days, numerical weather prediction (NWP) integrates the equations of atmospheric motion forward from an analysed initial state, and its skill has grown steadily for four decades~\cite{bauer2015quiet}. At seasonal range, predictability comes mainly from slowly varying boundary conditions such as sea surface temperature (SST), most prominently through the El Ni\~{n}o--Southern Oscillation (ENSO)~\cite{trenberth1998progress}. Between the two lies the \emph{subseasonal} window of about two weeks to two months. It is too long for the initial atmospheric state to be remembered in detail, because small errors grow chaotically~\cite{lorenz1963deterministic}, and too short for the boundary forcing to dominate. This window has been called a predictability desert, and it has become a priority of the operational and research community through coordinated efforts such as the Subseasonal-to-Seasonal (S2S) prediction project~\cite{vitart2017s2s,vitart2018s2s}.
+Weather and climate regimes shift over time. An El Ni\~{n}o year does not behave like a neutral year, and the monsoon's intraseasonal rhythm differs from season to season. A forecasting model trained once on historical data therefore goes stale as conditions change. The usual remedy, retraining the entire model from scratch or on a fixed schedule, is wasteful, because a distribution shift is usually confined to particular regions or relationships rather than the whole system. As forecasting systems grow from regional to global scale, the number of regions that can drift independently grows with them, and so does the cost of full retraining.
 
-The window matters in practice. Agricultural planning, reservoir operation, heat-health warnings and disaster preparedness need advance notice of weeks rather than days, and the most valuable information is regional: whether convection and rainfall will be enhanced or suppressed over a particular part of South Asia or the Maritime Continent in the coming week. In the tropics, the main physical source of skill in this window is organised, slowly propagating convection: the Madden--Julian Oscillation (MJO) in boreal winter~\cite{madden1971detection,madden1972description,zhang2005mjo} and the Boreal Summer Intraseasonal Oscillation (BSISO) in boreal summer~\cite{yasunari1979cloudiness,wang1997model,lee2013realtime}. A forecasting system that recognises where these organised disturbances are, and which regions they are about to influence, has a physical basis for skill beyond persistence.
+A second weakness lies in how forecasting systems choose their inputs. Most select source regions by correlation or by geographic proximity. In the tropical atmosphere, correlations are inflated by autocorrelation and by common drivers such as the large convective envelopes of intraseasonal oscillations~\cite{runge2014quantifying}. A model built on such relationships cannot distinguish "the physics of this region changed" from "a coincidental correlation broke". Causal discovery for time series offers an alternative: it asks whether the past of a source still carries information about a target once the target's other drivers and the source's own memory are accounted for~\cite{runge2018causal,runge2019detecting,runge2019inferring}.
 
-Machine learning has transformed medium-range forecasting. Graph neural networks and transformers trained on reanalysis now match or exceed operational NWP on many headline scores~\cite{keisler2022forecasting,lam2023learning,bi2023accurate,price2025probabilistic}. These models are, however, trained to minimise an average error over all their inputs. They do not state which inputs carry information about a given target, and they are not designed to detect when that dependence changes. For scientific understanding, for trust and for adaptation to a changing climate, it is useful to have an explicit, testable statement of \emph{which} source regions and variables influence a target, and with what delay. This thesis investigates whether such a statement can be built from data, validated independently, and then used to improve a forecasting model.
+This thesis combines the two ideas. It first discovers and independently validates the causal drivers of each region, and then uses them to guide a Mixture of Experts (MoE) whose experts are adapted only where a measured drift signal says that a region's behaviour has changed.
 
-\section{The Boreal Summer Intraseasonal Oscillation and Tropical Convection}
+\section{The Forecasting Setting: BSISO and OLR}
 \label{sec:intro-bsiso}
 
-The BSISO is the dominant mode of intraseasonal variability over the Asian summer monsoon region between roughly May and October~\cite{lee2013realtime,kikuchi2012bimodal}. Its convective envelope forms over the equatorial Indian Ocean and then propagates both eastward along the equator and northward over the Indian subcontinent and the Bay of Bengal, producing a characteristic north-west to south-east tilted rain band that also moves northward over the western North Pacific~\cite{wang1997model,jiang2004structures,lau1986aspects}. Its dominant period is 30--60 days, with a secondary 10--20-day component~\cite{lee2013realtime,annamalai2001active}. Over India it modulates the alternation of active and break spells of the monsoon~\cite{goswami2001intraseasonal,annamalai2001active,webster1998monsoons}.
+The subseasonal range of two weeks to two months is the least predictable window of weather forecasting and a current research priority~\cite{vitart2017s2s}. In the tropics its main source of skill is organised, propagating convection: the Madden--Julian Oscillation (MJO) in boreal winter~\cite{madden1971detection} and the Boreal Summer Intraseasonal Oscillation (BSISO) between May and October~\cite{wang1997model,lee2013realtime}. The BSISO forms over the equatorial Indian Ocean and moves northward and eastward with a 30--60-day period, driving the active and break spells of the Indian monsoon~\cite{goswami2001intraseasonal}.
 
-The BSISO is related to, but distinct from, the boreal-winter MJO. The MJO propagates predominantly eastward along the equator and is well described by the Wheeler--Hendon index~\cite{wheeler2004allseason}. The BSISO's northward propagation, its coupling to the monsoon trough and its seasonal timing make a summer-specific description necessary. Lee \emph{et al.}~\cite{lee2013realtime} therefore proposed BSISO indices based on a multivariate empirical orthogonal function (EOF) analysis of outgoing longwave radiation (OLR) and 850\,hPa zonal wind over 10\dg S--40\dg N, 40\dg--160\dg E during May--October. This thesis reproduces that index from its own data (Chapter~\ref{chap:data}) and uses it to define the season in which forecasts are evaluated. Throughout the thesis, the boreal-summer phenomenon is not conflated with winter intraseasonal variability; where results from MJO studies are used, the transfer is stated explicitly.
-
-\section{OLR as a Forecasting Target and a Proxy for Convection}
-\label{sec:intro-olr}
-
-OLR is the thermal infrared radiation leaving the top of the atmosphere, observed by polar-orbiting satellites since the 1970s~\cite{liebmann1996description}. Its value depends on the temperature of the emitting surface. Over the tropical oceans, deep convective clouds have cold, high tops and emit little, so low OLR indicates active deep convection. Clear skies or shallow clouds allow emission from the warm lower troposphere and surface, so high OLR indicates suppressed convection. Because of this relation, OLR is a standard proxy for large-scale tropical convective rainfall~\cite{arkin1987relationship} and was the primary field in the original detection of intraseasonal convection~\cite{lau1986aspects}.
-
-OLR is a proxy and not a measurement of precipitation. Thick non-precipitating cirrus also lowers OLR, and the relation between OLR and rainfall varies with region and cloud regime. In this thesis an OLR forecast is therefore described as a forecast of convective activity, and statements about rainfall are interpretations rather than verified results. OLR is a demanding target: its day-to-day autocorrelation decays quickly, so after a week a naive "no change" forecast retains almost no information and any skill must come from the evolution of the larger system.
-
-\section{Challenges of Multivariate, Lagged Climate Dependencies}
-\label{sec:intro-challenges}
-
-The future OLR of a region depends on the past state of many variables in many regions. Moisture is advected by low-level winds; convective heating excites equatorial Kelvin and Rossby waves that carry signals thousands of kilometres within days~\cite{matsuno1966quasi,gill1980simple,kiladis2009convectively}; SST anomalies modify the surface fluxes that sustain convection over weeks. A forecasting model that is given every variable of every region at every lag faces a very large and highly redundant input space. In the representation used here, 50 regions with six variables give 300 time series. If each of them is considered as a possible source for each OLR target at each lag between 1 and 60 days, there are $300\times 60 = 18{,}000$ lagged candidates per target, $50\times 18{,}000=900{,}000$ candidates for the 50 OLR targets, and $300\times 299\times 60 \approx 5.4$ million ordered source--target--lag combinations if every distinct node pair were considered (Section~\ref{sec:data-candidates}).
-
-Three properties of climate data make selection among these candidates difficult. First, every series is strongly \emph{autocorrelated}, so the effective sample size is much smaller than the number of days and spurious correlations between unrelated series are common~\cite{wilks2011statistical,bretherton1999effective}. Second, many series share \emph{common drivers}: an active BSISO phase simultaneously changes winds, moisture and OLR over large areas, so two regions can be correlated at a lag without either influencing the other. Third, relations are \emph{non-stationary}: the monsoon--ENSO relationship, for example, has varied over decades~\cite{kumar1999weakening}.
-
-\section{Limitations of Correlation-Based Source Selection}
-\label{sec:intro-correlation}
-
-The simplest way to choose predictors is to rank candidate sources by their lagged correlation with the target. Runge \emph{et al.}~\cite{runge2014quantifying} showed that lagged cross-correlation in climate data is ambiguous in both strength and delay: autocorrelation of the source and target inflates and broadens the correlation function, indirect pathways appear as direct links, and a common driver produces correlation at a lag determined by the driver's own delays rather than by any interaction between the two series. A correlation-ranked shortlist therefore tends to contain redundant sources that carry the same information and sources whose apparent relevance arises only from a common driver. Such sources may still forecast well within the training period, but their relevance can disappear when the driver's behaviour changes.
-
-\section{Motivation for Causal Discovery and Graph-Guided Forecasting}
-\label{sec:intro-causal}
-
-Causal discovery for time series replaces "is $X$ correlated with $Y$ at lag $\tau$?" with "does $X_{t-\tau}$ still carry information about $Y_t$ after conditioning on the other relevant past values?"~\cite{spirtes2000causation,runge2018causal}. The PCMCI algorithm~\cite{runge2019detecting} implements this idea at scale. It first screens each target's candidate parents with a fast condition-selection stage and then tests each surviving candidate with a momentary conditional-independence (MCI) test that conditions on the parents of both the target and the source. PCMCI has been used to study Arctic--midlatitude interactions~\cite{kretschmer2016using}, monsoon teleconnections~\cite{dicapua2020tropical,dicapua2020dominant} and climate-model evaluation~\cite{nowack2020causal}, and it is the reference method in reviews of causal inference in the Earth sciences~\cite{runge2019inferring,runge2023causal}.
-
-A conditional-independence graph is not a proof of causation. It depends on assumptions such as causal sufficiency, stationarity and the adequacy of the test~\cite{runge2018causal}. Its value as a \emph{forecasting prior} is also not guaranteed: a graph can be statistically credible and still not help a model whose bottleneck lies elsewhere. This thesis therefore separates two questions that are often merged: whether the graph is credible, which is tested by independent validation checks, and whether it is useful, which is tested by a controlled forecasting comparison.
+The forecast target is outgoing longwave radiation (OLR), the thermal radiation leaving the top of the atmosphere~\cite{liebmann1996description}. Deep convective clouds have cold tops and emit little, so low OLR indicates active convection and high OLR indicates suppressed convection~\cite{arkin1987relationship}. OLR is a convection proxy rather than a rainfall measurement, and it is a demanding target: it has the lowest day-to-day persistence of the six variables used here, so any skill beyond a few days must come from the evolution of the wider system.
 
 \section{Problem Statement}
 \label{sec:intro-problem}
 
-The research problem addressed by this thesis is:
-
 \begin{quote}
-\emph{Can a data-driven, independently validated graph of lagged climate dependencies, frozen before the test period, improve the selection of source regions for OLR forecasting during the BSISO season, relative to a model without such a prior and to random and lagged-correlation priors of matched size?}
+\emph{Can a statistically discovered and independently validated causal graph improve how a Mixture-of-Experts forecaster selects its source regions, and can causal-structure drift detection adapt individual regional experts, rather than the whole model, when the climate regime changes?}
 \end{quote}
 
-Answering this question requires a reproducible pipeline that builds the graph only from development years, validates it with checks that can fail, freezes it, and then evaluates it on held-out years under matched forecasting conditions.
-
-\section{Aim and Objectives}
+\section{Objectives}
 \label{sec:intro-objectives}
 
-The aim of this thesis is to design, implement and evaluate a \emph{build--validate--freeze--use} protocol for causal graphs in forecasting, applied to BSISO-season OLR, and to set out how its findings shape an India-focused regional forecasting extension. The objectives are:
+\paragraph{Phase 1 (this thesis).}
 \begin{enumerate}[label=\textbf{O\arabic*.}]
-  \item \textbf{Data representation.} Construct a 300-node daily representation (50 regions, six variables, 1979--2022) with a strict development/test separation and an activity-based BSISO season derived from the project's own data.
-  \item \textbf{Graph discovery.} Apply PCMCI to all 50 OLR targets over a full candidate pool of 300 nodes and lags of 1--60 days, with false-discovery-rate control, using an implementation fast enough for this scale and verified against a reference implementation.
-  \item \textbf{Graph validation.} Test the graph with four independent checks in a fixed order: surrogate decoys, physical lag masking, data-driven top-$k$ selection, and persistence across spatial resolution.
-  \item \textbf{Graph use.} Convert the validated graph into a region-level prior for a graph-guided Mixture-of-Experts (MoE) source splitter, implement the restrict, initialise and regularise modes of use, and define no-prior, random-prior and correlation-prior controls.
-  \item \textbf{Forecast evaluation.} Evaluate the effect of the prior on held-out 2013--2022 BSISO-season days at 7-day and 1-day leads, measuring both forecast skill and the discrimination of the splitter's source scores.
-  \item \textbf{Temporal stability.} Measure whether the causal structure changes over time in step with known climate regimes, as a candidate signal for adaptive experts.
-  \item \textbf{Extension design.} Translate the Phase~1 findings into the design of an India-focused, hourly forecasting system with causal gating and drift-triggered expert adaptation.
+  \item Discover a causal graph, not just a correlation map, across 50 regions and six weather variables, using PCMCI to find which regions' past conditions carry information about another region's future OLR.
+  \item Stress-test every discovered link: does it survive decoy variables, is it physically possible at real atmospheric propagation speeds, does it survive trimming to the strongest links, and does it hold when the regions are redrawn at a different resolution?
+  \item Feed the validated graph into the forecaster's causal splitter in three ways (narrowing its candidate sources, nudging its initial scores, or discouraging selections outside the graph) and compare it with a splitter without guidance on unseen years.
+  \item Build a drift-detection system that watches each region individually and decides whether to retrain that region's expert, spawn a new one for a changed regime, or reactivate an archived expert that has seen the regime before, avoiding full-model retraining.
 \end{enumerate}
 
-\section{Research Questions}
+\paragraph{Phase 2 (extension).}
+\begin{enumerate}[label=\textbf{O\arabic*.}, resume]
+  \item Design an India-focused hourly forecasting system: a shared graph neural network backbone with region-specific experts conditioned on causally validated drivers, autoregressive forecasts to 72 hours, and station-level validation.
+  \item Specify a benchmark against established forecasting models (GraphCast~\cite{lam2023learning} and WeatherNext) and a path to global scale.
+\end{enumerate}
+
+\section{Research Questions and Hypotheses}
 \label{sec:intro-rq}
 
-The objectives are organised around five research questions. Table~\ref{tab:rq} lists, for each, the method that addresses it and the evidence that would count as a positive, neutral or negative answer. Defining these outcomes before reporting results protects against reinterpreting a weak result as a success.
-
-\begin{description}[style=nextline,leftmargin=1.2cm]
-  \item[RQ1 -- Causal discovery] Can PCMCI identify meaningful conditional lagged dependencies among the six climate variables across the 50 regions?
-  \item[RQ2 -- Graph credibility] How robust are the discovered relationships under surrogate-decoy testing, physically justified lag checks, top-$k$ selection and spatial-resolution comparison?
-  \item[RQ3 -- Predictive usefulness] Does a validated causal graph improve seven-day OLR forecasting when used as a prior for the MoE splitter?
-  \item[RQ4 -- Value of causal structure] Does the causal prior outperform a no-prior model, a comparable random prior and a lagged-correlation prior under matched evaluation conditions?
-  \item[RQ5 -- Generalisation and adaptation] How can the Phase~1 findings inform an India-focused forecasting system that responds to temporal distribution shift and changing regional climate relationships?
+\begin{description}[style=nextline,leftmargin=1.1cm]
+  \item[RQ1] Can PCMCI identify meaningful conditional lagged dependencies among six climate variables across 50 regions?
+  \item[RQ2] How robust are these dependencies under decoy testing, physical lag checks, top-$k$ selection and a change of spatial resolution?
+  \item[RQ3] Does the validated graph improve source selection and forecast skill when used as a splitter prior?
+  \item[RQ4] Does a causal-structure drift signal detect regime shifts earlier than an error signal, and does reusing archived experts pay off?
+  \item[RQ5] How should these findings shape an India-focused, adaptive forecasting system?
 \end{description}
 
-\begin{table}[htbp]
-\centering
-\caption{Research questions, methods and the evidence that determines their answer.}
-\label{tab:rq}
-\footnotesize
-\renewcommand{\arraystretch}{1.25}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.0cm}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
-\toprule
-\textbf{RQ} & \textbf{Method} & \textbf{Positive outcome} & \textbf{Neutral or negative outcome} \\
-\midrule
-RQ1 & PCMCI with ParCorr and BH-FDR (Ch.~\ref{chap:pcmci}) & A sparse set of significant links whose fields, lags and distances are physically interpretable & Very dense graph (FDR failing), or links dominated by implausible fields or lags \\
-RQ2 & Checks B1--B4 (Ch.~\ref{chap:validation}) & Decoy rate below the pre-set warning line; few speed violations; links persist at doubled resolution & Decoys selected at rates comparable to real nodes; many impossible speeds; low persistence \\
-RQ3 & Graph prior in the splitter, 7-day lead (Ch.~\ref{chap:experiments}) & Higher held-out skill with the prior in most regions & No change (neutral) or lower skill (negative) \\
-RQ4 & Random and correlation priors of equal size & Causal prior better than both controls & Random or correlation prior equally good: the gain is due to pool size or association, not causal structure \\
-RQ5 & Design synthesis and drift analysis (Ch.~\ref{chap:phase2}) & Clear transfer of validated components; a drift signal aligned with known regimes & Components that do not transfer; a drift signal dominated by sampling noise \\
-\bottomrule
-\end{tabularx}
-\end{table}
+The corresponding testable hypotheses are: (H1) phase-randomised decoys are selected at a rate below 30\% and fewer than 5\% of links violate physical speed limits; (H2) at least half of each target's outside links persist at double resolution for most targets; (H3) the graph prior improves source discrimination and held-out skill; (H4) the structure channel detects known shifts before the error channel; and (H5) recurring regimes allow archived experts to be reactivated rather than retrained from scratch.
 
-\section{Testable Hypotheses}
-\label{sec:intro-hypotheses}
-
-The research questions are made operational by the following hypotheses. Each is stated so that it can be rejected by the experiments described in Chapter~\ref{chap:experiments}.
-
-\begin{Hypothesis}[Sparsity and credibility]\label{hyp:h1}
-After FDR control, PCMCI selects a graph in which phase-randomised decoys are selected at a rate below 30\% and in which fewer than 5\% of links require a propagation speed above the per-variable limit.
-\end{Hypothesis}
-
-\begin{Hypothesis}[Resolution persistence]\label{hyp:h2}
-For the majority of targets with outside drivers, at least half of the validated outside links reappear, with the same field and a lag within $\pm 2$ days, when the regions are split to double the spatial resolution.
-\end{Hypothesis}
-
-\begin{Hypothesis}[Predictive usefulness]\label{hyp:h3}
-Restricting the splitter's candidate pool to the validated graph increases held-out forecast skill relative to the no-prior model at the lead for which the forecast is designed (7 days).
-\end{Hypothesis}
-
-\begin{Hypothesis}[Causal specificity]\label{hyp:h4}
-Any skill gain from the causal prior exceeds the gain from a random prior and from a lagged-correlation prior of the same size per target.
-\end{Hypothesis}
-
-\begin{Hypothesis}[Regime sensitivity]\label{hyp:h5}
-The distance between causal parent sets in consecutive seasonal windows is larger when the ENSO phase changes between the windows than when it does not.
-\end{Hypothesis}
-
-\section{Scope and Technical Boundaries}
+\section{Scope}
 \label{sec:intro-scope}
 
-\begin{itemize}
-  \item \textbf{Target and season.} Phase~1 forecasts the regional mean OLR anomaly of each of 50 regions. Only target days inside the BSISO active season are scored; source history before the season is retained.
-  \item \textbf{Spatial domain.} The data lie on a 2.5\dg\ grid covering 30\dg S--30\dg N at all longitudes. The 50 regions tile this tropical belt; the Indo-Pacific sector, where the BSISO is active, is the physical focus.
-  \item \textbf{Statistical model of dependence.} Graph discovery uses linear partial correlation. Nonlinear dependence and contemporaneous (lag-0) links are outside the scope of Phase~1.
-  \item \textbf{Causal claims.} All links are statistical statements of conditional dependence at the scale of region means. They are not claims of mechanism.
-  \item \textbf{Forecast model.} The forecaster is deliberately small, so that the effect of source selection is not hidden by model capacity. Building a competitive operational OLR forecast is not an aim of Phase~1.
-  \item \textbf{Phase~2.} The India-focused extension is specified as a design with its data, components and evaluation protocol. Its experiments are future work, and global-scale forecasting is discussed only as a long-term direction.
-\end{itemize}
+Phase~1 forecasts regional-mean OLR anomalies directly at 7-day (primary) and 1-day leads on a 2.5\dg\ tropical grid (30\dg S--30\dg N, all longitudes) whose BSISO-active core is the Indo-Pacific. Graph discovery uses linear, lagged dependence; contemporaneous links are excluded. All links are statistical statements about conditional dependence between region means, not proofs of physical mechanism. Phase~2 is specified as a design; global forecasting is future work.
 
 \section{Contributions}
 \label{sec:intro-contrib}
 
-The contributions of this thesis, and the evidence that supports each, are:
 \begin{enumerate}
-  \item \textbf{A build--validate--freeze--use protocol} for using causal graphs in forecasting, in which the graph is built and validated only on development years and frozen before any test year is used (Chapters~\ref{chap:pcmci}--\ref{chap:validation}).
-  \item \textbf{A fast, verified PCMCI implementation.} A vectorised PCMCI with partial-correlation tests and Benjamini--Hochberg FDR that agrees link-for-link with Tigramite on test cases and processes 18{,}000 candidates per target for 50 targets in about 23 minutes (Chapter~\ref{chap:experiments}).
-  \item \textbf{A validated lagged graph for BSISO-season OLR.} 536 links, of which none involve a decoy, 3 violate the propagation-speed limits, and 62\% of outside links on average persist at doubled resolution (Chapter~\ref{chap:results}).
-  \item \textbf{A reproduced BSISO index and activity-based season} computed from the project's own fields, with leading-mode variances of 11.2\% and 7.7\%, close to the published 10\% and 7\% (Chapter~\ref{chap:data}).
-  \item \textbf{A first controlled assessment of the graph as a splitter prior.} The restrict prior makes full-pool splitter scores discriminative and improves 1-day skill over the no-prior model in 32 of 50 regions, with no measurable effect at 7 days (Chapter~\ref{chap:results}).
-  \item \textbf{A negative result on causal-structure drift.} Seasonal changes in parent sets do not track ENSO phase changes at one- and three-season windows (Chapter~\ref{chap:results}).
-  \item \textbf{A design for the India-focused extension} with explicit transfer of the validated components (Chapter~\ref{chap:phase2}).
+  \item A \textbf{build--validate--freeze--use} protocol in which the causal graph is built and validated on 1979--2012 only and frozen before any test year is used.
+  \item A \textbf{vectorised PCMCI} that matches the Tigramite reference and processes 18{,}000 candidates per target for 50 targets in about 23 minutes.
+  \item A \textbf{validated causal graph} for BSISO-season OLR: 536 links, 0 of 250 decoys selected, 3 links physically implausible, and 62\% mean persistence at double resolution.
+  \item A \textbf{graph-guided splitter} whose prior makes full-pool source scores informative (0 $\to$ 24 regions at 7 days, 0 $\to$ 36 at 1 day) and improves 1-day skill in 32 of 50 regions.
+  \item A \textbf{dual-channel drift detector and expert lifecycle}: the causal-structure channel detects known shifts several times sooner than the error channel at two of three regions, and 104 of 171 regime changes reuse an archived expert.
+  \item A \textbf{Phase~2 design} that transfers these components to India-focused hourly forecasting.
 \end{enumerate}
-Contributions~1--4 and~6 are fully supported by the experiments reported here. Contribution~5 is an established comparison against the no-prior model; whether the gain is specific to the causal graph is the subject of the matched-control experiments defined in Section~\ref{sec:exp-grid}.
 
-\section{Overview of the Complete System}
-\label{sec:intro-overview}
+\section{System Overview and Thesis Organization}
+\label{sec:intro-org}
 
-Figure~\ref{fig:roadmap} shows the two phases of the research programme. Phase~1 builds the climate graph (Stage~A), validates it (Stage~B), uses it as a source-selection prior (Stage~C), and measures its stability over time (Stage~D). Phase~2 carries the components that pass these tests into an India-focused hourly forecasting system with causal gating and adaptive experts.
+Figure~\ref{fig:roadmap} summarises the two phases. Chapter~\ref{chap:lit} reviews the related literature and states the research gap. Chapter~\ref{chap:data} defines the data and the forecasting task. Chapter~\ref{chap:pcmci} describes the overall Phase~1 workflow and PCMCI. Chapter~\ref{chap:validation} presents the validation checks, the graph-guided MoE and the drift-adaptive lifecycle. Chapter~\ref{chap:experiments} gives the implementation and experimental design, Chapter~\ref{chap:results} the results, Chapter~\ref{chap:phase2} the Phase~2 extension, and Chapter~\ref{chap:conclusion} the conclusions. Appendix~\ref{app:repro} lists the configuration, reproduction steps and open decisions.
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=0.45cm and 0.5cm]
-\node[box, fill=blue!6] (data) {Daily fields\\1979--2022\\300 nodes};
-\node[box, fill=blue!6, right=of data] (A) {\textbf{Stage A}\\PCMCI graph\\discovery};
-\node[box, fill=blue!6, right=of A] (B) {\textbf{Stage B}\\Four validation\\checks B1--B4};
-\node[box, fill=blue!6, right=of B] (C) {\textbf{Stage C}\\Graph prior in\\the MoE splitter};
-\node[box, fill=blue!6, below=0.6cm of C] (D) {\textbf{Stage D}\\Causal-structure\\drift};
-\node[box, fill=blue!6, below=0.6cm of B] (F) {Frozen graph\\(1979--2012)};
-\draw[arr] (data) -- (A); \draw[arr] (A) -- (B); \draw[arr] (B) -- (C);
-\draw[arr] (B) -- (F); \draw[arr] (F) -- (C); \draw[arr] (C) -- (D);
-\node[grp, fit=(data)(A)(B)(C)(D)(F), label={[font=\small\bfseries]above:Phase 1: causal graph for BSISO-season OLR (primary contribution)}] (p1) {};
-\node[wbox, fill=orange!8, below=2.6cm of F, xshift=-1.6cm] (P2a) {India region, hourly\\0.12\dg, up to 72\,h\\IMDAA, ERA5, ISD};
-\node[wbox, fill=orange!8, right=0.6cm of P2a] (P2b) {Shared backbone +\\causal gate +\\regional experts};
-\node[wbox, fill=orange!8, right=0.6cm of P2b] (P2c) {Drift monitoring and\\selective expert\\adaptation};
-\draw[arr] (P2a) -- (P2b); \draw[arr] (P2b) -- (P2c);
-\node[grp, fit=(P2a)(P2b)(P2c), label={[font=\small\bfseries]below:Phase 2: India-focused forecasting and adaptive experts (extension)}] (p2) {};
-\draw[arr, line width=1.2pt] (p1.south) -- node[lbl, right, xshift=2pt, fill=white]{validated components, lessons on lags and priors} (p2.north);
-\end{tikzpicture}%
-}
-\caption{Two-phase research roadmap. Phase~1 builds, validates, freezes and uses a causal graph for BSISO-season OLR forecasting and measures its stability. Phase~2 transfers the components that pass these tests to an India-focused hourly forecasting system. Global-scale forecasting is treated as future work.}
+\includegraphics[width=\textwidth]{workflows/wf_overview.pdf}
+\caption{Two-phase research roadmap. Phase~1 builds, validates and uses a causal graph and keeps the regional experts current through drift-triggered adaptation. Phase~2 carries the validated components into India-focused regional forecasting, followed by benchmarking and, in future, global scaling.}
 \label{fig:roadmap}
 \end{figure}
-
-\section{Organization of the Thesis}
-\label{sec:intro-org}
-
-\begin{itemize}
-  \item \textbf{Chapter~\ref{chap:lit}} reviews tropical convection and the BSISO, causal discovery for time series, multiple testing and surrogate methods, Mixture-of-Experts models, machine-learning weather forecasting and drift detection, and identifies the research gaps.
-  \item \textbf{Chapter~\ref{chap:data}} formalises the forecasting task and describes the data, regional partition, BSISO season, preprocessing and leakage controls.
-  \item \textbf{Chapter~\ref{chap:pcmci}} presents the PCMCI methodology, its statistical tests, FDR correction and computational design.
-  \item \textbf{Chapter~\ref{chap:validation}} develops the four validation checks and the graph-guided MoE, including the three modes of using the graph and the control priors.
-  \item \textbf{Chapter~\ref{chap:experiments}} describes the implementation, the experimental grid, the metrics and the statistical analysis.
-  \item \textbf{Chapter~\ref{chap:results}} reports and discusses the results, organised by research question, together with threats to validity.
-  \item \textbf{Chapter~\ref{chap:phase2}} presents the India-focused Phase~2 extension.
-  \item \textbf{Chapter~\ref{chap:conclusion}} summarises the findings, assesses each objective and outlines future work.
-  \item \textbf{Appendices~A--C} give the notation, derivations, configuration tables, experiment registry, reproducibility instructions and decision log.
-\end{itemize}

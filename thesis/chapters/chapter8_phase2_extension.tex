@@ -1,293 +1,80 @@
 \label{chap:phase2}
 
-This chapter describes Phase~2, which carries the Phase~1 lessons into an India-focused regional forecasting system with causal gating and adaptive experts. It combines the regional-forecasting and adaptation components of the research plan into one extension. Section~\ref{sec:p2-status} separates what has been implemented from what is designed and what is future work; unless stated otherwise, the content of this chapter is a design specification.
+Phase~1 tested the causal graph and the adaptive experts on a deliberately controlled problem: one convective proxy, daily data and 50 large regions. Phase~2 carries the components that passed those tests into an operationally relevant setting: hourly, kilometre-scale forecasting of near-surface weather over India. This chapter specifies the design; its experiments are future work.
 
-\section{Motivation: From Regional OLR to Forecasting over India}
+\section{Motivation}
 \label{sec:p2-motivation}
 
-Phase~1 studied a deliberately simplified problem: a single convective proxy, daily resolution, 50 large regions and a small forecaster. This made it possible to test the causal graph with full control. Its findings, however, matter most if they help a forecast that people use. India is a natural setting for the extension:
-\begin{itemize}
-  \item The BSISO studied in Phase~1 drives the active and break spells of the Indian summer monsoon~\cite{goswami2001intraseasonal,annamalai2001active}, so the large-scale drivers identified there are physically relevant.
-  \item High-resolution regional reanalysis (IMDAA~\cite{rani2021imdaa}) and dense station records~\cite{smith2011integrated} make kilometre-scale, hourly evaluation possible.
-  \item Near-surface heat, humidity and wind over India have strong societal impact, and their predictability changes with monsoon regime and ENSO state~\cite{kumar1999weakening}, which makes adaptation to shift a real requirement.
-\end{itemize}
-The question for Phase~2 is: \emph{can the causal architecture contribute to a competitive hourly forecasting system over India up to 72 hours ahead, and can it adapt when the regional climate relationships change?}
+The BSISO studied in Phase~1 drives the active and break spells of the Indian summer monsoon~\cite{goswami2001intraseasonal}, so the large-scale drivers identified there are physically relevant to India. High-resolution regional reanalysis~\cite{rani2021imdaa} and dense station records~\cite{smith2011integrated} make hourly verification possible, and near-surface heat, humidity and wind over India have strong societal impact. Their predictability changes with monsoon regime and ENSO state, which makes adaptation to shift a requirement. The Phase~2 horizon of up to 72 hours also matches the one- to two-day time scale of the dependencies found in Phase~1.
 
-\section{Forecasting Targets, Resolution and Horizon}
-\label{sec:p2-targets}
-
-Table~\ref{tab:p2-targets} lists the planned targets. Gridded targets are near-surface fields on a regional grid of about 0.12\dg\ (about 12\,km), matching the IMDAA reanalysis. Point targets are station observations, used to evaluate the gridded forecasts where they matter most and, optionally, as direct forecast targets.
-
-\begin{table}[htbp]
-\centering
-\caption{Planned Phase~2 forecast targets.}
-\label{tab:p2-targets}
-\footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.5cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}X}
-\toprule
-\textbf{Target} & \textbf{Type} & \textbf{Notes} \\
-\midrule
-2\,m temperature & Gridded, station & Diurnal cycle and heat-wave relevance \\
-2\,m relative humidity & Gridded & Heat stress; monsoon moisture \\
-10\,m zonal and meridional wind & Gridded & Monsoon flow; wind energy \\
-Mean sea-level pressure & Gridded & Synoptic systems, monsoon trough and depressions \\
-2\,m dewpoint & Station & Moisture at observation sites \\
-\midrule
-\multicolumn{3}{l}{Temporal resolution: hourly. Horizon: 1--72 hours. Domain: Indian region at about 0.12\dg\ ($\approx$12\,km).}\\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Two features distinguish this task from Phase~1. The horizon is short (up to three days), so the short-lag dependencies that Phase~1 found are exactly the ones that matter. And the targets are dominated by the diurnal cycle and by local surface conditions, so a strong shared model of local dynamics is required before any remote driver can add value.
-
-\section{Proposed Datasets and Their Roles}
-\label{sec:p2-data}
-
-Table~\ref{tab:p2-data} lists the candidate datasets. Their versions, periods, licences and acquisition status must be confirmed before they are treated as final choices; the decision log (Appendix~\ref{app:decisions}) records them as open.
-
-\begin{table}[htbp]
-\centering
-\caption{Candidate Phase~2 datasets. All entries are planned; versions, periods and licences are to be confirmed.}
-\label{tab:p2-data}
-\footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}X}
-\toprule
-\textbf{Dataset} & \textbf{Characteristics} & \textbf{Role} \\
-\midrule
-IMDAA~\cite{rani2021imdaa} & Regional reanalysis for the Indian monsoon region; about 12\,km; hourly; satellite era & Primary gridded inputs and targets over India \\
-ERA5~\cite{hersbach2020era5} & Global reanalysis; about 31\,km (0.25\dg); hourly; 1940 onward & Boundary context outside the regional domain; source of candidate large-scale drivers (for example BSISO, ENSO and Indian Ocean indices, remote circulation) \\
-NOAA ISD~\cite{smith2011integrated} & Hourly and synoptic station observations worldwide & Independent point verification; station targets (2\,m temperature, dewpoint) \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Station data require explicit quality control (duplicate removal, outlier and gap handling, station relocation checks) and a policy for matching stations to grid cells. Reanalysis data require consistent regridding, unit harmonisation and alignment of hourly time stamps. As in Phase~1, all statistics used to normalise the data must be estimated on training years only.
-
-\section{Shared Forecasting Backbone}
-\label{sec:p2-backbone}
-
-Phase~1 used one small expert per region and no shared model. At kilometre scale and hourly resolution this would discard the common physics shared by all locations. Phase~2 therefore introduces a shared backbone $B_\phi$ that maps the recent regional state to a latent representation for each grid node,
-\begin{equation}
-  \mathbf{z}_{n,t} = B_\phi\big(\mathbf{x}_{\mathcal{N}(n),\,t-H:t}\big),
-\end{equation}
-where $\mathcal{N}(n)$ is a local neighbourhood of node $n$ on the regional mesh and $H$ the input history. A graph-based limited-area model~\cite{oskarsson2023graph} or a regional adaptation of a message-passing global model~\cite{keisler2022forecasting,lam2023learning} is a natural choice. The backbone carries the bulk of forecasting skill; the experts and the causal gate add regime-specific and driver-specific corrections.
-
-\section{Candidate Climate Drivers and Lagged Causal Discovery}
-\label{sec:p2-drivers}
-
-A \emph{causal detector} identifies which large-scale drivers, and at what lags, carry information about each regional target after conditioning on local history. The candidate drivers come from ERA5 and Phase~1-style regional means: intraseasonal indices (BSISO1/2 amplitude and phase), ENSO and Indian Ocean SST indices, upstream moisture transport, and the state of the large-scale regions identified as drivers in Phase~1. The detector applies the Phase~1 pipeline with three changes motivated by the Phase~1 results:
-\begin{enumerate}
-  \item \textbf{Lead-matched lags.} For a forecast at lead $L$, drivers are tested only at lags $\tau\ge L$, so that every retained link is usable at the issue time (Eq.~\eqref{eq:availability}).
-  \item \textbf{Driver-level priors.} Claims are made at the level of drivers and source regions rather than individual fields, as in the region-level prior of Phase~1.
-  \item \textbf{Validation retained.} Decoys, the physical speed mask and resolution persistence are applied as in Phase~1; persistence is tested between the regional grid and a coarser aggregation.
-\end{enumerate}
-Because hourly data are much more strongly autocorrelated than daily data, the effective sample size per hour of data is low. Discovery can be carried out on daily or six-hourly aggregates of the drivers, with the target aggregated to the same resolution, and the resulting graph applied to the hourly model.
-
-\section{Graph-Guided Gating and Expert Architecture}
-\label{sec:p2-gating}
-
-Figure~\ref{fig:p2-arch} shows the planned architecture. Experts $\{E_k\}_{k=1}^{K}$ are small networks that refine the backbone's representation for particular regimes or sub-regions. A gate $g$ assigns weights to the experts for each node and time,
-\begin{equation}
-  \hat{\mathbf{y}}_{n,t+L} = D_\omega(\mathbf{z}_{n,t}) + \sum_{k=1}^{K} g_k(\mathbf{z}_{n,t},\mathbf{c}_{n,t})\,E_k(\mathbf{z}_{n,t},\mathbf{c}_{n,t}),\qquad \sum_k g_k=1,
-  \label{eq:p2moe}
-\end{equation}
-where $D_\omega$ is the backbone's decoder and $\mathbf{c}_{n,t}$ is a \emph{causal context} vector: the values, at the issue time, of the drivers that the causal detector retained for node $n$, weighted by their link strengths. The gate is sparse (top-1 or top-2 routing~\cite{shazeer2017outrageously,fedus2022switch}) with a load-balancing penalty.
-
-This differs from the Phase~1 use of the graph in an important way. In Phase~1 the graph selected \emph{predictors}: it decided which source regions entered the forecast. In Phase~2 the graph conditions the \emph{gate}: it decides which expert's correction to apply, given the state of the drivers. A driver that is too slow or too remote to add predictive information directly can still be useful for identifying the regime, for example whether the BSISO is in an active phase over India, in which a particular expert is reliable.
+\section{Workflow}
+\label{sec:p2-workflow}
 
 \begin{figure}[htbp]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=0.4cm and 0.5cm]
-\node[box, text width=2.4cm] (in) {IMDAA state\\(hourly, 12\,km)\\+ ERA5 boundary};
-\node[box, fill=blue!6, right=0.6cm of in, text width=2.4cm] (bb) {\textbf{Shared backbone}\\$B_\phi$ (graph\\message passing)};
-\node[box, fill=orange!10, right=0.9cm of bb, text width=2.2cm] (e2) {Expert $E_2$};
-\node[box, fill=orange!10, above=0.25cm of e2, text width=2.2cm] (e1) {Expert $E_1$};
-\node[box, fill=orange!10, below=0.25cm of e2, text width=2.2cm] (e3) {Expert $E_K$};
-\node[box, fill=blue!6, right=0.8cm of e2, text width=1.9cm] (sum) {$D_\omega(\mathbf z)+$\\$\sum_k g_k E_k$};
-\node[box, right=0.5cm of sum, text width=1.8cm] (out) {Forecast\\1--72\,h};
-\node[box, fill=green!10, below=1.1cm of e3, text width=2.2cm] (gate) {\textbf{Causal gate} $g$\\$(\mathbf z,\mathbf c)$};
-\node[box, fill=green!10, text width=2.4cm] (cd) at (bb |- gate) {\textbf{Causal detector}\\drivers, lags\\($\tau\ge L$, validated)};
-\node[box, text width=2.4cm] (drv) at (in |- gate) {Candidate drivers\\BSISO, ENSO, IOD,\\remote regions};
-\coordinate (mid) at ($(sum.south)!0.5!(out.south)$);
-\node[box, fill=red!8, text width=2.4cm] (drift) at (mid |- gate) {\textbf{Drift monitor}\\error + structure};
-\draw[arr] (in) -- (bb); \draw[arr] (bb) -- (e1.west); \draw[arr] (bb) -- (e2); \draw[arr] (bb) -- (e3.west);
-\draw[arr] (e1.east) -- (sum); \draw[arr] (e2) -- (sum); \draw[arr] (e3.east) -- (sum); \draw[arr] (sum) -- (out);
-\draw[arr] (drv) -- (cd); \draw[arr] (cd) -- node[lbl,above]{$\mathbf c$} (gate);
-\draw[arr] (gate) -- node[lbl,right]{weights $g_k$} (e3);
-\draw[darr, red!60!black] (out.south) -- node[lbl,right]{errors} (out.south |- drift.north);
-\draw[darr, red!60!black] (drift.north west) -- node[lbl, sloped, above]{spawn / retrain} (e3.south east);
-\draw[darr, red!60!black] (drift.south) -- ++(0,-0.45) -| node[lbl, pos=0.25, below]{re-estimate graph} (cd.south);
-\end{tikzpicture}%
-}
-\caption{Planned Phase~2 architecture (schematic). A shared backbone encodes the regional state; a causal detector provides validated, lead-matched drivers that condition a sparse gate over experts; a drift monitor watches forecast errors and causal structure, and triggers re-estimation of the graph and the creation, retraining or reactivation of experts.}
-\label{fig:p2-arch}
+\includegraphics[width=\textwidth]{workflows/wf_phase2.pdf}
+\caption{Phase~2 workflow. India data are preprocessed onto a regional mesh; a causal detector supplies validated, lead-matched drivers to the gate of a shared GNN backbone with regional experts; forecasts to 72 hours are verified against stations and benchmarked; a per-region drift monitor adapts only the affected expert. Global scaling follows once the regional system is validated.}
+\label{fig:p2-workflow}
 \end{figure}
 
-\paragraph{Open design choices.} The design documents admit several expert structures, and none has been finalised: (i) \emph{regional experts}, one per sub-region of India (for example by homogeneous rainfall zones); (ii) \emph{per-node experts} with shared parameters and node embeddings; (iii) \emph{regime experts} shared across space and selected by the causal context; or (iv) a hybrid of a shared expert and regime experts. Option (iii) uses the causal context most directly; option (i) is closest to Phase~1. The choice will be made on validation data, and the alternatives are recorded in the decision log.
+Figure~\ref{fig:p2-workflow} shows the planned workflow.
 
-\section{Drift Monitoring and Causal-Signature Changes}
-\label{sec:p2-drift}
-
-A deployed regional model faces three kinds of change: \emph{seasonal} changes that recur every year, \emph{interannual regime} changes such as ENSO phases, and \emph{long-term} changes due to climate trends or changes in the observing system. The model should not react to the first (it can be learned), should adapt to the second, and should be retrained for the third.
-
-Two monitoring channels are planned:
-\begin{enumerate}
-  \item \textbf{Error channel.} The rolling forecast error of each expert is monitored with ADWIN~\cite{bifet2007learning}, which keeps a variable-length window and signals a change when two sub-windows have significantly different means, or with CUSUM~\cite{page1954continuous}:
-  \begin{equation}
-    C_t = \max\big(0,\;C_{t-1}+(e_t-\mu_0-\kappa)\big),\qquad \text{alarm if } C_t>h,
-  \end{equation}
-  where $e_t$ is the error, $\mu_0$ its reference mean, $\kappa$ a slack and $h$ a threshold.
-  \item \textbf{Structure channel.} The causal detector is rerun on rolling windows and the change in the driver set or driver strengths is monitored with STARS~\cite{rodionov2004sequential}. Phase~1 showed that a set-based Jaccard distance on short windows is dominated by sampling noise, so Phase~2 uses a strength-based distance over longer windows against a fixed reference,
-  \begin{equation}
-    \Delta^{\mathrm{str}}_{w} = \frac{\lVert \mathbf{m}_w-\mathbf{m}_{\mathrm{ref}}\rVert_1}{\lVert\mathbf{m}_{\mathrm{ref}}\rVert_1},
-  \end{equation}
-  where $\mathbf{m}_w$ is the vector of MCI strengths of the candidate links in window $w$.
-\end{enumerate}
-STARS computes, for each new observation, a regime-shift index
-\begin{equation}
-  \mathrm{RSI}_{t} = \sum_{s=t}^{t+m}\frac{x_s-\bar{x}_{\mathrm{new}}}{\ell\,\hat\sigma_{\ell}},
-\end{equation}
-where $\bar{x}_{\mathrm{new}}$ is the critical level that a new regime's mean must exceed (set from a $t$-test at a chosen significance level), $\ell$ is the cut-off length and $\hat\sigma_\ell$ the average standard deviation of $\ell$-length intervals; a shift is accepted if the index keeps its sign over the cut-off length~\cite{rodionov2004sequential}. The two channels can be combined with OR, which reacts quickly at the cost of more false alarms, or with AND, which is more conservative.
-
-\section{Regime-Shift Detection and Selective Expert Adaptation}
-\label{sec:p2-adapt}
-
-When a drift alarm is raised for a region or regime, the lifecycle of the affected expert is decided in tiers:
-\begin{itemize}
-  \item \textbf{Tier 0, no action:} the alarm is not confirmed by the second channel, or the error is within its normal range.
-  \item \textbf{Tier 1, retrain:} the expert is fine-tuned on recent data, with an elastic-weight-consolidation penalty~\cite{kirkpatrick2017overcoming} to limit forgetting of earlier regimes.
-  \item \textbf{Tier 2, spawn or reactivate:} the current expert is archived together with its causal signature, and either a new expert is spawned or an archived expert is reactivated.
-\end{itemize}
-Archived experts are retrieved by the similarity of their causal signature to the current one. Two retrieval rules are compared: \emph{single best match}, which reactivates the most similar archived expert, and \emph{pool blend}, which blends the $k$ most similar experts with weights proportional to their similarity. Because climate regimes such as El Ni\~{n}o recur, reactivation reuses knowledge rather than relearning it, and adding experts instead of overwriting them avoids catastrophic forgetting~\cite{rusu2016progressive,aljundi2017expert}.
-
-\section{Groundwork Implemented on the Phase 1 Dataset}
-\label{sec:p2-groundwork}
-
-The drift-monitoring and expert-lifecycle machinery has been implemented and tested on the Phase~1 daily OLR data, using the splitter's edge-score pattern as the structural signal (rather than the PCMCI parent sets of Stage~D), at three regions chosen to span low, medium and high splitter discrimination (regions 22, 12 and 29). These experiments are the groundwork for the Phase~2 lifecycle.
-
-\paragraph{Drift detection.} Two test shifts were used: the abrupt 1997--98 El Ni\~{n}o and a gradual multi-year shift. Table~\ref{tab:p2-drift} shows the results for region 22. The error channel alone missed the abrupt shift and detected the gradual one slowly; the structure channel detected both quickly; their OR combination detected both quickly; their AND combination missed the abrupt shift. At regions 12 and 29, both shifts were detected under all signal and combination settings, with region-specific delays; at region 29 the structure channel detected the gradual shift after 117 days, compared with 1{,}158 days for the error channel.
+\paragraph{1--2. Data and preprocessing.} IMDAA provides hourly regional reanalysis at about 12\,km as the primary input and target; ERA5~\cite{hersbach2020era5} provides the boundary context and candidate large-scale drivers (BSISO and ENSO indices, remote circulation); and the NOAA Integrated Surface Database provides station observations. Fields are regridded, hourly time stamps aligned, and normalisation statistics estimated on training years only. Targets are 2\,m temperature and relative humidity, 10\,m wind components and mean sea-level pressure on the grid, plus 2\,m temperature and dewpoint at stations.
 
 \begin{table}[htbp]
 \centering
-\caption{Drift detection on two test shifts, region 22 (Phase~1 data, splitter-score structure signal).}
-\label{tab:p2-drift}
-\small
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Detector} & \textbf{Abrupt shift (1997--98)} & \textbf{Gradual shift} \\
-\midrule
-Error channel only & missed & detected, slowly \\
-Structure channel only & detected, quickly & detected \\
-OR combination & detected, quickly & detected \\
-AND combination & missed & detected, slowly \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\paragraph{Expert retrieval.} Table~\ref{tab:p2-lifecycle} compares the two retrieval rules and the choice between warm-starting a reactivated expert and spawning a fresh one. Blending the three most similar archived experts beat reactivating the single best match on forecast error in 61--69\% of drift events and on forgetting at all three regions, which is the most consistently repeated finding of these experiments. Whether warm-starting helps is region-dependent.
-
-\begin{table}[htbp]
-\centering
-\caption{Expert lifecycle comparisons on Phase~1 data at three regions. Fractions are drift events in which the first option has lower forecast error.}
-\label{tab:p2-lifecycle}
+\caption{Planned Phase~2 datasets (versions, periods and licences to be confirmed).}
+\label{tab:p2-data}
 \footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{p{6.6cm}ccc}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}X}
 \toprule
-\textbf{Comparison} & \textbf{Region 22} & \textbf{Region 12} & \textbf{Region 29} \\
+\textbf{Dataset} & \textbf{Characteristics} & \textbf{Role} \\
 \midrule
-Pool blend beats single best (forecast error) & 30/49 (61\%) & 42/61 (69\%) & 41/61 (67\%) \\
-Pool blend better on forgetting & yes & yes & yes \\
-Warm start beats fresh spawn (forecast error) & 28/34 (82\%) & mixed & 24/36 (67\%) \\
-Warm start better on forgetting & no & no & yes \\
+IMDAA~\cite{rani2021imdaa} & Regional reanalysis for the Indian monsoon region; $\sim$12\,km; hourly & Primary gridded inputs and targets \\
+ERA5~\cite{hersbach2020era5} & Global reanalysis; $\sim$31\,km; hourly & Boundary context; candidate large-scale drivers \\
+NOAA ISD~\cite{smith2011integrated} & Hourly station observations & Station targets and independent verification \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-\paragraph{Reconciling the two structural signals.} The splitter-score signal detected the two test shifts, whereas the PCMCI parent-set distance of Stage~D did not track ENSO across all years. The two results are not contradictory: they use different signals (continuous splitter scores versus discrete parent sets), different tests (two named events at three regions versus all phase changes at fifty regions) and different window lengths. Together they suggest that continuous, strength-based structural signals are more promising than set-based ones, which is the choice made for Phase~2 (Section~\ref{sec:p2-drift}).
+\paragraph{3. Causal detector.} The Phase~1 pipeline (PCMCI, decoys, speed mask, persistence) is applied with one change suggested by the Phase~1 results: for a forecast at lead $L$, drivers are tested only at lags $\tau\ge L$, so that every retained link is usable at the issue time.
 
-\section{Evaluation under Distribution Shift}
-\label{sec:p2-eval}
+\paragraph{4--5. Shared backbone, causal gate and regional experts.} A shared graph neural network backbone encodes the regional state by message passing on the regional mesh~\cite{lam2023learning,oskarsson2023graph}. Region-specific experts refine its output, and a sparse gate~\cite{shazeer2017outrageously} weights the experts using the backbone state together with the validated drivers $\mathbf{c}$:
+\begin{equation}
+  \hat{\mathbf{y}}_{n,t+L}=D(\mathbf{z}_{n,t})+\sum_{k} g_k(\mathbf{z}_{n,t},\mathbf{c}_{n,t})\,E_k(\mathbf{z}_{n,t}),\qquad \textstyle\sum_k g_k=1 .
+\end{equation}
+In Phase~1 the graph selected \emph{predictors}; in Phase~2 it also conditions the \emph{gate}. A driver too slow to add direct predictive information can still identify the regime, for example an active BSISO phase over India, in which a particular expert is reliable.
 
-The Phase~2 evaluation protocol follows the Phase~1 discipline of chronological splits, frozen choices and paired comparisons, and adds evaluation that is specific to shift:
-\begin{itemize}
-  \item \textbf{Temporal holdout:} the most recent years are held out entirely; normalisation, graph discovery and model selection use training years only.
-  \item \textbf{Regime-stratified scores:} errors reported separately for El Ni\~{n}o, La Ni\~{n}a and neutral seasons, active and break monsoon phases, monsoon onset and withdrawal, and pre-monsoon heat.
-  \item \textbf{Leave-regime-out tests:} training without one regime type and testing on it, to measure generalisation to an unseen regime.
-  \item \textbf{Detector metrics:} detection delay after a known shift, false-alarm rate in periods without a shift (with known recurring events counted as true shifts, not false alarms), and the number of lifecycle actions.
-  \item \textbf{Adaptation metrics:} error after adaptation, forgetting (the increase of error on earlier regimes after adaptation), and compute cost of retraining.
-  \item \textbf{Accuracy metrics:} RMSE, MAE and bias per variable, lead and region; station-based verification against ISD; anomaly correlation for the diurnal-cycle-removed signal.
-\end{itemize}
-
-\section{Planned Baselines and Benchmarks}
-\label{sec:p2-baselines}
-
-Table~\ref{tab:p2-baselines} lists the planned baselines. The ablations isolate each component: the backbone alone, the backbone with experts but an uninformed gate, the gate with a random or correlation context in place of the causal context, and the full system with and without adaptation.
+\paragraph{6--8. Forecasting, validation and benchmarking.} Forecasts are rolled out autoregressively to 72 hours, verified against station observations by RMSE, MAE and bias per variable, lead and region, and benchmarked against GraphCast~\cite{lam2023learning} and WeatherNext using the same data, horizons and protocol. Scores are also stratified by monsoon phase and ENSO state.
 
 \begin{table}[htbp]
 \centering
 \caption{Planned Phase~2 baselines and ablations.}
 \label{tab:p2-baselines}
 \footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}X}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}X}
 \toprule
 \textbf{Baseline / ablation} & \textbf{Purpose} \\
 \midrule
-Persistence; diurnal persistence (same hour yesterday) & Lower bounds for hourly forecasts \\
-Hourly climatology by day of year & Reference for skill scores \\
-Backbone only & Value of experts and gate \\
-Backbone + experts, learned gate without causal context & Value of the causal context \\
-Gate with random / correlation context of equal size & Specificity of causal information (as in Phase~1) \\
-Full system without adaptation & Value of drift-triggered adaptation \\
-Periodic retraining on a fixed schedule & Adaptation without drift detection \\
-Published global ML forecasts, e.g.\ GraphCast~\cite{lam2023learning}, GenCast~\cite{price2025probabilistic}, interpolated to the regional grid & External benchmark, where forecasts are available for the test period \\
+Persistence; same hour yesterday; hourly climatology & Reference forecasts for skill scores \\
+Backbone only & Value of the experts and gate \\
+Gate without causal context; random or correlation context & Value and specificity of the causal drivers \\
+Full system without adaptation; fixed-schedule retraining & Value of drift-triggered adaptation \\
+GraphCast, WeatherNext & External benchmarks on the same data and protocol \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\section{Implementation Status and Unresolved Design Choices}
+\paragraph{9--10. Drift monitoring and selective adaptation.} Each region runs the dual-channel detector of Phase~1. Because the PCMCI parent-set distance proved noisy over short windows, the structure channel uses continuous signals: the splitter-score pattern, which detected shifts early in Phase~1, or strength-based distances over longer windows. Only the affected region's expert is retrained, spawned or reactivated, with pooled reactivation as the default.
+
+\section{Evaluation under Distribution Shift}
+\label{sec:p2-eval}
+
+The evaluation keeps the Phase~1 discipline of a chronological holdout, frozen graphs and matched controls (a random or correlation context in place of the causal one). It adds regime-stratified scores (El Ni\~{n}o, La Ni\~{n}a and neutral years; monsoon onset, active and break phases), leave-one-regime-out tests, and adaptation metrics: detection latency, false-alarm rate, error after adaptation, forgetting, and compute cost compared with full retraining.
+
+\section{Status and Path to Global Scale}
 \label{sec:p2-status}
 
-Table~\ref{tab:p2-status} records the status of each component.
-
-\begin{table}[htbp]
-\centering
-\caption{Phase~2 component status.}
-\label{tab:p2-status}
-\footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}X}
-\toprule
-\textbf{Component} & \textbf{Status} & \textbf{Notes} \\
-\midrule
-Causal discovery and validation pipeline & Implemented (Phase~1) & To be extended with lead-matched lags and driver indices \\
-Error and structure drift channels; STARS; ADWIN & Implemented (Phase~1 data) & Strength-based structure distance to be added \\
-Expert archive, reactivation, pool blending & Implemented (Phase~1 data) & Tested at three regions \\
-India datasets (IMDAA, ERA5, ISD) & Planned & Versions, periods and licences to be confirmed \\
-Shared backbone & Designed & Architecture choice open \\
-Causal gate and expert structure & Designed & Regional, per-node, regime or hybrid experts: open \\
-Shift-aware evaluation & Designed & Protocol in Section~\ref{sec:p2-eval} \\
-External benchmarks & Planned & Depends on forecast availability for the test period \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{Relationship to the Phase 1 Contribution}
-\label{sec:p2-relation}
-
-Phase~2 depends on Phase~1 in three ways. First, it inherits the validated components: the decoy test, the physical speed mask and the persistence test give a way to trust a driver set before using it, and they scale to large candidate pools. Second, it inherits two design corrections: lags must match the forecast lead, and set-based structural signals from short windows are too noisy to drive adaptation. Third, it inherits the evaluation discipline: graphs frozen before testing, matched random and correlation controls, and reporting of neutral and negative results. The question left open by Phase~1, whether the causal content of a graph improves on a random graph of the same size, is equally central to Phase~2, where it becomes the comparison between a causal and a random gate context.
-
-\section{Future Scale-Up Considerations}
-\label{sec:p2-scale}
-
-If Phase~2 shows regional value, the approach could be extended to larger domains and eventually to a global mesh. Three issues would then dominate: the cost of causal discovery, which grows with the number of targets times the number of candidates and would require hierarchical or dimension-reduced candidate sets; the number of experts, which must stay bounded through archiving and merging; and evaluation against global data-driven systems on standard benchmarks such as WeatherBench~2~\cite{rasp2024weatherbench2}. Global forecasting is not part of this thesis and is discussed only as a long-term direction (Section~\ref{sec:conc-future}).
-
-\section{Chapter Summary}
-\label{sec:p2-summary}
-
-Phase~2 extends the causal-graph approach to hourly, kilometre-scale forecasting of near-surface variables over India up to 72 hours ahead. It combines a shared backbone, a causal detector with lead-matched and validated drivers, a gate conditioned on causal context, and drift-triggered expert adaptation with archiving and reactivation. The drift and lifecycle machinery has been implemented and tested on Phase~1 data, where blending archived experts outperformed single-expert reactivation in a majority of drift events and on forgetting at all three regions tested; the remaining components are designed, with their open choices and evaluation protocol recorded.
+The causal-discovery and validation pipeline, the drift channels and the expert archive with pooled reactivation are implemented and tested on Phase~1 data. The India datasets, the shared backbone and the causal gate are designed, and their open choices (backbone architecture, and regional, per-node or regime experts) will be settled on validation data. Once the regional system is competitive, the same architecture extends to global scale: larger meshes, more diverse regimes, long-range teleconnections and a larger expert pool. At that scale causal discovery will need hierarchical candidate sets and the expert pool active management.

@@ -1,0 +1,40 @@
+% Shared style for the workflow figures (standalone TikZ, compiled to PDF).
+\usepackage[T1]{fontenc}
+\usepackage[scaled=0.95]{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds,shapes.misc,shapes.geometric}
+
+\definecolor{cBlue}{HTML}{2B6CB0}
+\definecolor{cTeal}{HTML}{1C8C8C}
+\definecolor{cGreen}{HTML}{2F855A}
+\definecolor{cPurple}{HTML}{6B46C1}
+\definecolor{cOrange}{HTML}{C05621}
+\definecolor{cRed}{HTML}{C53030}
+\definecolor{cGray}{HTML}{4A5568}
+\definecolor{cInk}{HTML}{1A202C}
+
+\tikzset{
+  cardbody/.style={rectangle, rounded corners=3pt, line width=0.9pt, align=left,
+                   font=\scriptsize\color{cInk}, inner xsep=5pt, inner ysep=5pt},
+  cardhead/.style={rectangle, rounded corners=3pt, align=left, text=white,
+                   font=\footnotesize, inner xsep=4pt, inner ysep=3.5pt},
+  numc/.style={circle, line width=0.9pt, inner sep=0pt, minimum size=5.2mm,
+               font=\footnotesize\bfseries},
+  flow/.style={-{Stealth[length=2.6mm,width=2.2mm]}, line width=1.3pt, color=cGray},
+  loop/.style={-{Stealth[length=2.4mm,width=2mm]}, line width=1.1pt, dashed, color=cRed},
+  tag/.style={rectangle, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2.5pt},
+  note/.style={font=\scriptsize\itshape, color=cGray, align=center},
+  band/.style={rectangle, rounded corners=6pt, line width=0.8pt, inner sep=7pt},
+}
+
+% \card{name}{position}{colour}{number}{title}{body}{width}{body height}
+\newcommand{\card}[8]{%
+  \node[cardbody, draw=#3, fill=#3!5, text width=#7, minimum height=#8, anchor=north]
+       (#1) at (#2) {#6};
+  \node[cardhead, fill=#3, text width=#7, anchor=south, yshift=-1.5pt] (#1h) at (#1.north) {\hspace*{4.2mm}\textbf{#5}};
+  \node[numc, fill=white, draw=#3, text=#3] at ([xshift=1pt]#1h.west) {#4};
+}
+\newcommand{\bul}{\textcolor{cGray}{\textbullet}~}

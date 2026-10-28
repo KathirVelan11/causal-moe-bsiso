@@ -1,257 +1,130 @@
 \label{chap:results}
 
-\section{Evaluation Overview}
-\label{sec:res-overview}
+This chapter reports the Phase~1 results in the order of the research questions. Every number comes from a saved result file of the project (Appendix~\ref{app:repro}).
 
-This chapter reports the Phase~1 results in the order of the research questions. Every number is taken from a saved result file of the project (Appendix~\ref{app:repro} maps each number to its file), and every figure in this chapter, except where stated, was generated from those files. Table~\ref{tab:res-status} summarises the evidence available for each stage.
-
-\begin{table}[htbp]
-\centering
-\caption{Evidence reported in this chapter, by stage.}
-\label{tab:res-status}
-\footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.0cm}}
-\toprule
-\textbf{Stage} & \textbf{Evidence} & \textbf{RQ} \\
-\midrule
-Season & BSISO index and season from own data & -- \\
-A: discovery & PCMCI graph at 50 regions; walk-through for region 22 & RQ1 \\
-B: validation & B1 decoys, B2 lag mask, B3 top-$k$, B4 persistence at 100 regions & RQ2 \\
-Pool-size baseline & No-prior splitter in three pools, year-round and season & RQ3 context \\
-C: graph as prior & PCMCI restrict prior vs no prior, full pool, 7-day and 1-day leads & RQ3, RQ4 (partial) \\
-Ablations & Alternative splitter objectives; training budget; season vs year-round & -- \\
-D: drift & One- and three-season windows vs ENSO & RQ5 \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\section{BSISO Index and Season Diagnostics}
+\section{BSISO Season}
 \label{sec:res-season}
 
-The BSISO index reproduced from the project's OLR and u850 anomalies (Section~\ref{sec:data-season}) has leading modes that explain 11.2\% and 7.7\% of the combined variance on May--October days of 1979--2012. Lee \emph{et al.}~\cite{lee2013realtime} report approximately 10\% and 7\% for their BSISO1 modes. The small excess is consistent with the smaller domain used here (northern edge at 30\dg N instead of 40\dg N), which concentrates the analysis on the region of strongest intraseasonal convection. Table~\ref{tab:bsiso} gives the comparison. The resulting amplitude has the expected seasonal cycle: low in boreal winter and spring, rising above 1 in May and remaining high until about November (Figure~\ref{fig:season}, top).
-
-\begin{table}[htbp]
-\centering
-\caption{Variance explained by the leading combined EOF modes of the BSISO index.}
-\label{tab:bsiso}
-\small
-\begin{tabular}{lcc}
-\toprule
-\textbf{Mode} & \textbf{This work} & \textbf{Lee et al.\ (2013)~\cite{lee2013realtime}} \\
-\midrule
-EOF 1 & 11.2\% & $\approx$10\% \\
-EOF 2 & 7.7\% & $\approx$7\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The activity-based season lasts on average 208 days per year, with a range of 82 to 286 days, and begins between April and July (Figure~\ref{fig:season}, bottom). The variability is substantial: a fixed May--October window would include weeks of inactive BSISO in some years and miss active weeks in others. The development years provide 7{,}153 season target days for discovery, and the test years provide 1{,}989 scored season target days for the forecasting comparison.
+The BSISO index reproduced from the project's own OLR and u850 anomalies has leading modes explaining 11.2\% and 7.7\% of the variance, close to the approximately 10\% and 7\% reported by Lee \emph{et al.}~\cite{lee2013realtime}. The slightly larger values are consistent with the smaller domain, whose northern edge is 30\dg N rather than 40\dg N. The activity-based season (Figure~\ref{fig:season}) lasts 208 days per year on average, ranges from 82 to 286 days, and begins between April and July. A fixed May--October window would therefore include inactive weeks in some years and miss active weeks in others.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.86\textwidth]{01_bsiso_season.png}
-\caption{BSISO index and activity-based season. Top: median and interquartile range of the BSISO amplitude by day of year over 1979--2022, with the activity threshold of 1. Bottom: the season (target days) of each year; blue for discovery and training years (1979--2012), orange for held-out test years (2013--2022).}
+\includegraphics[width=0.82\textwidth]{ppt_01b_active_bsiso_season_per_year.png}
+\caption{Active BSISO season (target days) in each year, derived from the reproduced BSISO index. Blue: discovery and training years (1979--2012); orange: held-out test years (2013--2022).}
 \label{fig:season}
 \end{figure}
 
-\section{Stage A: PCMCI Discovery (RQ1)}
+\section{Stage A: The Discovered Graph (RQ1)}
 \label{sec:res-stagea}
 
-\subsection{Size and composition of the graph}
-PCMCI at an FDR of 0.05 retains \textbf{536 links} into the 50 OLR targets, 10.7 per target on average, out of 900{,}000 candidates. The graph is therefore very sparse: about 0.06\% of candidates survive. Table~\ref{tab:stagea} breaks the links down.
+PCMCI at an FDR of 0.05 retains \textbf{536 links} into the 50 OLR targets, 10.7 per target, out of 900{,}000 candidates: the graph is very sparse. Of these, 376 lie within the target's own region, mostly its own OLR at lags of 1--7 days, and 160 come from other regions: OLR 72, u850 37, u200 22, h850 18, PW 11 and SST 0. The outside links act quickly, with a median lag of one day, 90\% at two days or less, and none at 25 days or more. Once PCMCI conditions on these fast drivers, slow precursors such as SST carry little \emph{direct} information, because their influence has already passed through the atmospheric fields. Convection in a neighbouring region, together with the low-level flow that carries moisture and the upper-level wave response, precedes convection in the target, which is the expected physical picture of propagating convection.
 
-\begin{table}[htbp]
-\centering
-\caption{Composition of the Stage~A graph (50 regions, FDR 0.05).}
-\label{tab:stagea}
-\small
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{lr}
-\toprule
-\textbf{Quantity} & \textbf{Value} \\
-\midrule
-Significant links & 536 \\
-Links per target (mean) & 10.7 \\
-Own-region links & 376 \\
-Outside links & 160 \\
-\quad from OLR & 72 \\
-\quad from u850 & 37 \\
-\quad from u200 & 22 \\
-\quad from h850 & 18 \\
-\quad from PW & 11 \\
-\quad from SST & 0 \\
-Median lag of outside links & 1 day \\
-Outside links with lag $\le$ 2 days & 90\% \\
-Outside links with lag $\ge$ 25 days & 0 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Three features stand out.
-\begin{enumerate}
-  \item \textbf{Most links are within the target's own region}, and most of these are the target's own OLR at lags of 1--7 days. This is the expected autoregressive structure of convection: the best single predictor of a region's OLR is its own recent past.
-  \item \textbf{Outside links are short-lag.} The median lag is one day and 90\% are at two days or less. No outside link has a lag of 25 days or more. Slow precursors, such as SST one BSISO cycle ahead, do not survive. This is consistent with how PCMCI works: once the target's short-lag parents are conditioned on, the information that a slow precursor carries about the target has largely been transmitted through those faster intermediaries, so the precursor has little \emph{direct} link left. This is a property of conditional rather than marginal dependence, not evidence that slow precursors are irrelevant.
-  \item \textbf{There are no outside SST links.} The atmospheric fields respond to SST over days to weeks, and these responses are captured by the atmospheric nodes themselves. SST's direct contribution, after conditioning on them, is too small to pass FDR.
-\end{enumerate}
-Among the outside drivers, OLR is the most frequent field, followed by the low-level wind u850, the upper-level wind u200 and the low-level height h850. This ordering matches the physical picture of propagating convection: convection in a neighbouring region, together with the low-level flow that carries moisture and the upper-level outflow and wave response, precede convection in the target.
-
-\subsection{Spatial structure}
-Figure~\ref{fig:graphmap} maps the validated outside drivers. Most links connect neighbouring regions, along the equatorial Indian Ocean and Maritime Continent, across the western Pacific and across the southern subtropical Pacific. A handful of longer links, such as 22$\to$32, 46$\to$28 and 8$\to$38, are carried by wind and height fields and require 1--2 days at equatorial-wave speeds. The map also shows which links reappear at 100 regions (Section~\ref{sec:res-b4}).
+Figure~\ref{fig:graphmap} maps the outside drivers. Most connect neighbouring regions; a few longer links carried by wind and height fields span thousands of kilometres within one or two days, at equatorial-wave speeds.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{02_graph_map.png}
-\caption{Validated outside drivers of the 50 OLR targets. Each arrow joins a source region to a target region (one arrow per pair, strongest link), with width proportional to $|\MCI|$. Blue: the link reappears at 100 regions (B4); orange: flagged by B4. Grey shading is land; thin lines are region boundaries; circles mark region identifiers at region centres.}
+\includegraphics[width=\textwidth]{ppt_map_standard_180_convention.png}
+\caption{Validated outside drivers of the 50 OLR targets (arrows from source region to target region), coloured by the source field.}
 \label{fig:graphmap}
 \end{figure}
 
-\subsection{A worked example: region 22}
-Region 22 lies over the equatorial western Pacific near the Maritime Continent, where several circulation regimes meet. Table~\ref{tab:region22} follows its links through the pipeline. PCMCI finds 13 links: ten within the region (its own OLR at lags 1--3 and 5--7, and its u850 and h850 at lags 1--2) and three outside links (h850 from region 27 at lags 1 and 3, and PW from region 6 at lag 2). Both source regions are about 280\,km away at their closest cells, so the implied speeds of 1--3\ms\ are physically easy. The resulting prior is region 27 (strength 0.21) and region 6 (strength 0.05). Both region-27 links persist at 100 regions; the region-6 PW link does not and is flagged, giving a persistence score of 0.67.
+\paragraph{Worked example: region 22.} Region 22 lies over the equatorial western Pacific near the Maritime Continent. PCMCI finds 13 links for it: 10 within the region and three from outside (h850 from region 27 at lags 1 and 3, and PW from region 6 at lag 2). Both source regions are about 280\,km away, so the implied speeds of 1--3\ms\ are physically easy. The prior is region 27 (strength 0.21) and region 6 (0.05). Independently, the splitter trained with no prior selects regions 6, 12 and 27, which include both prior regions: two unrelated methods agree on the same drivers. Table~\ref{tab:region22} follows the region's links through the checks.
 
 \begin{table}[htbp]
 \centering
 \caption{The links of target region 22 through Stages A and B.}
 \label{tab:region22}
 \footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.4cm}>{\centering\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}X}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.3cm}>{\centering\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}X}
 \toprule
-\textbf{Step} & \textbf{Links left} & \textbf{What happened} \\
+\textbf{Step} & \textbf{Links} & \textbf{What happened} \\
 \midrule
-PCMCI & 13 & 10 own-region links (OLR lags 1--3, 5--7; u850 and h850 lags 1--2); h850 from region 27 at lags 1 and 3; PW from region 6 at lag 2 \\
-B1 decoys & 13 & No decoy selected anywhere; no strength threshold \\
-B2 lag mask & 13 & Outside sources $\approx$280\,km away; implied speeds 1--3\ms \\
-B3 top-$k$ & 3 outside & All three outside links retained; own-region links do not count against $k$ \\
-B4 persistence & score 0.67 & Both region-27 links persist; region-6 PW link flagged \\
-Prior & 2 regions & Region 27 (0.21), region 6 (0.05) \\
+PCMCI & 13 & 10 own-region (OLR lags 1--3, 5--7; u850, h850 lags 1--2); h850 from region 27 (lags 1, 3); PW from region 6 (lag 2) \\
+B1 decoys & 13 & no decoy selected anywhere \\
+B2 lag mask & 13 & sources $\approx$280\,km away; 1--3\ms \\
+B3 top-$k$ & 3 outside & all three outside links kept \\
+B4 persistence & 0.67 & both region-27 links persist; region-6 PW link flagged \\
+Prior & 2 regions & region 27 (0.21), region 6 (0.05) \\
 \bottomrule
 \end{tabularx}
 \end{table}
-
-Independently of the graph, when the splitter is trained on region 22 with no prior in the direct pool, it selects regions 6, 12 and 27. Both prior regions are among its choices. The two methods use different data representations, objectives and algorithms, so their agreement on the same two drivers is a useful, if anecdotal, piece of corroborating evidence.
-
-\subsection{Answer to RQ1}
-PCMCI identifies a sparse set of conditional lagged dependencies whose fields, lags and geography are physically interpretable. The answer to RQ1 is positive, with the qualification that the identified dependencies are dominated by short-lag, largely regional coupling rather than by long-lead teleconnections.
 
 \section{Stage B: Validation (RQ2)}
 \label{sec:res-stageb}
 
-Figure~\ref{fig:checks} shows how many links survive each check, and Table~\ref{tab:checks} summarises the outcome.
-
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{03_links_through_checks.png}
-\caption{Left: links remaining after each validation check, split into own-region links (blue) and outside links (orange). B4 does not delete links; its bar shows how many outside links persist at 100 regions. Right: distribution of the number of source regions in each target's prior (mean 2.06).}
-\label{fig:checks}
+\begin{subfigure}[b]{0.56\textwidth}\centering
+\includegraphics[width=\textwidth]{ppt_03b_links_through_checks_no_b3_b4.png}
+\caption{Links after PCMCI, B1 and B2.}\label{fig:links}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.4\textwidth}\centering
+\includegraphics[width=\textwidth]{ppt_decoy_v1_big_count_bars.png}
+\caption{B1: decoys selected vs rejected.}\label{fig:b1}
+\end{subfigure}
+\caption{The graph survives the first two checks almost unchanged. (a) Own-region links (blue) and outside links (orange) after each check. (b) None of the 250 phase-randomised decoys was selected as a parent of any target.}
+\label{fig:b1b2}
 \end{figure}
 
-\begin{table}[htbp]
-\centering
-\caption{Outcome of the four validation checks.}
-\label{tab:checks}
-\footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.0cm}}
-\toprule
-\textbf{Check} & \textbf{Result} & \textbf{Outcome} \\
-\midrule
-B1 decoys & 0 of 250 decoys selected; real graph 10.3 vs 10.7 links per target with and without decoys & Pass (rate 0\% $<$ 30\%) \\
-B2 lag mask & 3 of 536 links exceed the speed limit (64, 33 and 26\ms, all at lag 1); no lag $\ge$ 25 days & Pass \\
-B3 top-$k$ & Validation $R^2$ rises from 0.9619 ($k=0$) to 0.9633 ($k=10$); $k^\ast=10$, which retains all 157 surviving outside links & Prior size set at 2.06 regions per target \\
-B4 persistence & Mean persistence 0.62; 33 of 48 scored targets $\ge$ 0.5 & Pass on average; 15 targets flagged \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\subsection{B1: decoys}
-\label{sec:res-b1}
-In the separate pass with 250 phase-randomised decoys in the pool (550 nodes, 33{,}000 candidates per target), \textbf{no decoy is selected as a parent of any target}. The decoy rate is 0\%, far below the 30\% warning line. At the same time, the real part of the graph is almost unchanged: 517 real links (10.3 per target) compared with 536 (10.7 per target) in the clean pass. The small reduction is expected, because the larger pool increases the number of hypotheses in the BH correction and slightly raises the effective threshold. Figure~\ref{fig:b1} shows that the strength distributions of real links in the two passes are nearly identical, including the cluster of strong own-OLR links near $|\MCI|\approx 0.85$.
+\paragraph{B1: decoys.} \textbf{None of the 250 decoys} was selected (decoy rate 0\%, against the 30\% warning line), while the real graph barely changed (517 real links in the decoy pass versus 536). The pipeline does not select series merely because they share the autocorrelation and the 30--60-day spectral peak of real climate nodes (Figures~\ref{fig:b1b2} and~\ref{fig:b1strength}).
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.78\textwidth]{04_b1_decoys.png}
-\caption{B1: distribution of $|\MCI|$ for real links in the clean pass (536 links) and in the pass with 250 decoys in the pool (517 links). No decoy was selected, so the decoy rate is 0\%.}
-\label{fig:b1}
+\includegraphics[width=0.7\textwidth]{04_b1_decoys.png}
+\caption{B1: distribution of $|\hat\rho^{\,\mathrm{MCI}}|$ for real links in the clean pass (536) and in the pass with 250 decoys in the pool (517). The two distributions nearly coincide, including the strong own-OLR links near 0.85.}
+\label{fig:b1strength}
 \end{figure}
 
-Because no decoy survives FDR, the strength bar of Eq.~\eqref{eq:kappa} is zero and removes no real link. The evidence from B1 is therefore carried by the decoy rate and by the stability of the real graph. The result shows that the pipeline does not select series merely because they share the autocorrelation and the 30--60-day spectral peak of real climate nodes. Within the limits of the surrogate null (Section~\ref{sec:val-b1}), this addresses the most common source of spurious links in climate data.
-
-\subsection{B2: physical lag mask}
-\label{sec:res-b2}
-Only \textbf{3 of 536} links need a speed above the limit of their source field: h850 from region 22 to region 32 (5{,}531\,km at lag 1, 64\ms), OLR from region 28 to region 33 (2{,}889\,km at lag 1, 33\ms) and OLR from region 3 to region 47 (2{,}215\,km at lag 1, 26\ms). All three are at lag 1, which is where the speed requirement is highest. They are removed from the prior and kept, flagged, in the graph file. Of the outside links that pass, 28 span 500--5{,}500\,km, and the fastest of them requires 46\ms; all such fast links come from the wind and height fields, consistent with equatorial-wave propagation. Figure~\ref{fig:b2} shows that the implied speeds of OLR and PW links lie mostly below 5\ms, the speed of the BSISO envelope, while dynamical fields reach faster speeds at larger distances. No link reaches the 25-day oscillation flag.
+\paragraph{B2: physical lag mask.} Only \textbf{3 of 536} links need an impossible speed: h850 from region 22 to region 32 (5{,}531\,km at lag 1, 64\ms), and OLR from 28 to 33 (33\ms) and from 3 to 47 (26\ms). Of the outside links kept, 28 span 500--5{,}500\,km, and the fastest needs 46\ms; all of these come from wind and height fields, consistent with equatorial waves (Figure~\ref{fig:b2}). No link reaches the 25-day oscillation flag.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{05_b2_speed.png}
-\caption{B2: implied speed (closest-cell distance divided by lag) against distance for every outside link, by source field, with the speed limit of each field (dashed). Crosses are links that exceed the limit.}
+\includegraphics[width=\textwidth]{ppt_05b_b2_speed_no_title.png}
+\caption{B2: implied speed against closest distance for every outside link, by source field, with each field's speed limit (dashed). Crosses are the three rejected links.}
 \label{fig:b2}
 \end{figure}
 
-\subsection{B3: top-\texorpdfstring{$k$}{k} selection}
-\label{sec:res-b3}
-The validation $R^2$ of Eq.~\eqref{eq:r2k}, averaged over targets, increases monotonically with $k$, from 0.9619 with own-region links only to 0.9633 with ten outside links (Figure~\ref{fig:b3}). The gain from each additional outside link decreases from about $3.6\times10^{-4}$ for the first to below $10^{-5}$ for the ninth and tenth. The maximum is at $k^\ast=10$, which equals the largest number of outside links of any target, so B3 retains all 157 outside links that passed B2.
+\paragraph{B3: top-$k$.} The validation $R^2$ rises from 0.9619 with own-region links only to 0.9633 with ten outside links, each extra link adding a little. The selected $k=10$ equals the largest number of outside links of any target, so all 157 surviving outside links are kept: PCMCI with FDR control is already sparse. The prior has \textbf{2.06 source regions per target}; two targets (regions 13 and 42) have no outside driver (Figure~\ref{fig:b3}).
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{06_b3_k.png}
-\caption{B3: mean validation $R^2$ on 2005--2012 season days (fit 1979--2004) as a function of the number $k$ of outside links per target (left), and the gain from the $k$-th link (right). Own-region links are always included, so $R^2$ starts high.}
+\caption{B3: mean validation $R^2$ on 2005--2012 season days against the number $k$ of outside links per target (left), and the gain from the $k$-th link (right).}
 \label{fig:b3}
 \end{figure}
 
-Two observations explain this outcome. First, PCMCI with FDR is already sparse: with about three outside links per target on average, there is little to prune. Second, the high baseline $R^2$ shows that own-region links, evaluated at their own lags, explain most of the target's variance, and every outside link adds a small amount of independent information on development data. B3 therefore confirms that no target has an excessive number of drivers and fixes the prior at its natural size of \textbf{2.06 source regions per target}, distributed as shown in Figure~\ref{fig:checks} (right): 2 targets have no outside driver (regions 13 and 42), 13 have one, 24 have two, and 11 have three to five.
-
-\subsection{B4: resolution persistence}
-\label{sec:res-b4}
-At 100 regions, the mean persistence score across the 48 targets that have outside drivers is \textbf{0.62}, and \textbf{33 of 48} targets reach the 0.5 threshold (Figure~\ref{fig:b4}). Of the 157 outside links, 97 reappear at the finer resolution. Persistence differs markedly by source field: OLR links persist best (56 of 70), followed by u200 (14 of 22), u850 (17 of 37), h850 (6 of 17) and PW (4 of 11).
+\paragraph{B4: resolution persistence.} At 100 regions the mean persistence score is \textbf{0.62}, and \textbf{33 of 48} scored targets reach 0.5 (Figure~\ref{fig:b4}). OLR links persist best (56 of 70), followed by u200 (14 of 22); moisture and low-level height links, which are more local, persist least (PW 4 of 11, h850 6 of 17).
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{07_b4_persistence.png}
-\caption{B4: persistence score of each target at 100 regions, sorted (left; orange: below 0.5, flagged), and the share of links that persist by source field (right). Targets 13 and 42 have no outside driver and are not scored.}
+\caption{B4: persistence score of each target at 100 regions (left; orange below 0.5, flagged) and the share of links that persist by source field (right).}
 \label{fig:b4}
 \end{figure}
 
-The field dependence is physically sensible. Links between convective regions (OLR to OLR) reflect the large-scale propagation of convective envelopes and survive a change of partition. Upper-level wind anomalies are large in scale and also persist well. Moisture (PW) and low-level height links are more local and noisier at sub-region scale, so they are more sensitive to how regions are drawn. Seven targets have a persistence score of zero; these are mostly targets with one or two weak outside links.
+\noindent Hypotheses H1 and H2 are supported: the discovered graph is sparse, physically plausible and largely robust to the spatial partition.
 
-\subsection{Answer to RQ2}
-The graph passes the decoy test with no decoy selected, the physical-speed test with 3 failures in 536 links, and the persistence test on average with 62\% of outside links reappearing at doubled resolution. B3 confirms that the graph is already compact. Hypotheses~\ref{hyp:h1} and~\ref{hyp:h2} are supported. The answer to RQ2 is that the discovered relationships are robust under every check that can reject them, with the qualification that persistence is weaker for moisture and low-level height links, and that these checks bound the rate of certain kinds of error rather than prove the links causal.
+\section{Source Selection and Forecasting (RQ3)}
+\label{sec:res-stagec}
 
-\section{Graph Properties: Sparse, Short-Lag and Regional}
-\label{sec:res-properties}
-
-Taken together, Stages A and B describe the dependence structure of BSISO-season OLR at the scale of 50 regions as follows:
-\begin{itemize}
-  \item \textbf{Sparse:} about ten links per target, of which about three come from other regions, merging into about two source regions.
-  \item \textbf{Short-lag:} outside links act at one or two days; own-region memory extends to about a week.
-  \item \textbf{Regional:} most outside drivers are neighbouring regions; the few remote links are carried by dynamical fields at wave speeds.
-  \item \textbf{Convectively coherent:} OLR-to-OLR links dominate and are the most persistent.
-\end{itemize}
-This structure has a direct implication for forecasting. By the availability condition of Eq.~\eqref{eq:availability}, almost none of the outside links can be exploited directly by a seven-day forecast, whereas nearly all of them can be exploited by a one-day forecast. The graph identifies \emph{which} regions are coupled to a target; the coupling acts on time scales of a day or two.
-
-\section{Source Selection Without a Prior: Pool Size and Discrimination}
+\subsection{The splitter without a prior}
 \label{sec:res-pool}
 
-Before using the graph, it is necessary to establish what the splitter achieves on its own. Table~\ref{tab:pool} reports the no-prior splitter in the three candidate pools at the 7-day lead, both year-round (from the project's earlier experiments on the same data) and on BSISO-season days (the Phase~1 baseline).
+Without a prior, the expert beats persistence at 7 days in all 50 regions in every candidate pool, with a mean skill of about $+0.40$. The year-round 7-day forecast in the direct pool has a mean MSE of 0.317 and a mean RMSE of 0.559 standard deviations (Figure~\ref{fig:mse}). Source discrimination, however, depends strongly on the pool (Table~\ref{tab:pool}): 27--30 regions have informative splitters in the direct pool, 8--9 in the 2hop pool, and none in the full pool. With 50 similar-looking candidates, the shared scoring network cannot separate them. Figure~\ref{fig:poolfig} shows the same contrast: accuracy is flat across pools while discrimination collapses. Discrimination also needs enough training: with the direct pool, 5 epochs give 27 informative regions against 5 after 2 epochs (Figure~\ref{fig:epochs}).
 
 \begin{table}[htbp]
 \centering
-\caption{No-prior splitter by candidate pool, 7-day lead, 50 regions, test period 2013--2022. Informative: splitters with $\sigma_a\ge 0.02$.}
+\caption{No-prior splitter by candidate pool, 7-day lead, 50 regions, test period 2013--2022.}
 \label{tab:pool}
 \footnotesize
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{llccccc}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llccc}
 \toprule
-\textbf{Days} & \textbf{Pool} & \textbf{Informative} & \textbf{Beat persistence} & \textbf{Mean $S_{\mathrm{pers}}$} & \textbf{Beat climatology} & \textbf{Mean $R^2_{\mathrm{clim}}$} \\
+\textbf{Target days} & \textbf{Pool} & \textbf{Informative splitters} & \textbf{Beat persistence} & \textbf{Mean $S_{\mathrm{pers}}$} \\
 \midrule
-Year-round & direct & 27/50 & 50/50 & $+0.401$ & -- & $-0.014$ \\
- & 2hop & 8/50 & 50/50 & $+0.395$ & -- & $-0.023$ \\
- & full & 0/50 & 50/50 & $+0.396$ & -- & $-0.020$ \\
-\midrule
-Season & direct & 30/50 & 50/50 & $+0.412$ & 15/50 & $-0.020$ \\
- & 2hop & 9/50 & 50/50 & $+0.413$ & 18/50 & $-0.018$ \\
- & full & 0/50 & 50/50 & $+0.415$ & 14/50 & $-0.015$ \\
+Year-round & direct / 2hop / full & 27 / 8 / 0 & 50 / 50 / 50 & $+0.401$ / $+0.395$ / $+0.396$ \\
+BSISO season & direct / 2hop / full & 30 / 9 / 0 & 50 / 50 / 50 & $+0.412$ / $+0.413$ / $+0.415$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -259,34 +132,46 @@ Season & direct & 30/50 & 50/50 & $+0.412$ & 15/50 & $-0.020$ \\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{02_variant_comparison.png}
-\caption{No-prior splitter, year-round, 7-day lead: forecast skill relative to persistence is flat across the three candidate pools (left), whereas the number of regions with informative splitter scores collapses as the pool grows (right).}
-\label{fig:pool}
+\caption{No-prior splitter, year-round, 7-day lead: skill relative to persistence is flat across candidate pools (left), while the number of regions with informative splitter scores collapses as the pool grows (right).}
+\label{fig:poolfig}
 \end{figure}
 
-The pattern is the same in both settings (Figure~\ref{fig:pool}). Forecast skill relative to persistence is essentially independent of the pool, at about $+0.40$, and every region beats persistence. The splitter's ability to discriminate between candidates, however, collapses as the pool grows: from 27--30 informative regions in the direct pool to 8--9 in the 2hop pool and none in the full pool. The splitter must score every candidate in one pass with a shared network, and with 50 similar-looking candidates its scores converge to a common value. Accuracy is maintained because the expert can still extract information from whichever sources are passed to it, but the selection is no longer meaningful.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{ppt_c3_per_region_mse_rmse_7day.png}
+\caption{Per-region MSE (top) and RMSE (bottom) of the 7-day OLR forecast, direct pool, year-round test 2013--2022, sorted by error. Dashed lines: means (MSE 0.317, RMSE 0.559).}
+\label{fig:mse}
+\end{figure}
 
-This result defines the problem that the causal prior is meant to address: in a large pool, where remote drivers can be considered, the splitter alone cannot tell which candidates matter. In the project's earlier experiments on region 22, shrinking the full pool to its eight most correlated candidates did not restore discrimination, which already suggested that \emph{how} the pool is reduced matters.
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[b]{0.38\textwidth}\centering
+\includegraphics[width=\textwidth]{ppt_03c_informative_scores_2_vs_5_epochs.png}
+\caption{Informative splitters, 2 vs 5 epochs.}\label{fig:epochs}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.58\textwidth}\centering
+\includegraphics[width=\textwidth]{ppt_09_2_forecast_vs_actual_no_title.png}
+\caption{Region 22, 1-day forecast vs observed OLR (illustrative 1979--80 window).}\label{fig:fva}
+\end{subfigure}
+\caption{(a) Splitter discrimination needs an adequate training budget. (b) The expert follows the observed OLR anomalies one day ahead, including sharp swings; held-out scores are reported in Table~\ref{tab:stagec}.}
+\label{fig:epochs-fva}
+\end{figure}
 
-The table also shows that the model loses to climatology on average at seven days ($R^2_{\mathrm{clim}}\approx-0.015$ to $-0.023$), although 14--18 of 50 regions beat it on season days. Beating persistence is a low bar at seven days, because OLR keeps almost no memory over a week; climatology is the demanding reference at this lead.
+\subsection{The causal graph as a prior}
 
-\section{Stage C: The Causal Graph as a Splitter Prior (RQ3, RQ4)}
-\label{sec:res-stagec}
-
-\subsection{Seven-day lead}
-Table~\ref{tab:stagec} and Figure~\ref{fig:stagec7} compare the PCMCI prior in restrict mode with the no-prior splitter in the full pool.
+Table~\ref{tab:stagec} compares the PCMCI prior in restrict mode with no prior in the full pool on the 1{,}989 held-out season days.
 
 \begin{table}[htbp]
 \centering
-\caption{PCMCI prior (restrict) versus no prior, full pool, 2013--2022 season days (1{,}989 days, 50 regions, single seed).}
+\caption{PCMCI prior (restrict) vs no prior, full 50-region pool, 2013--2022 season days.}
 \label{tab:stagec}
 \footnotesize
-\renewcommand{\arraystretch}{1.2}
 \begin{tabular}{llccccc}
 \toprule
 \textbf{Lead} & \textbf{Prior} & \textbf{Informative} & \textbf{Beat pers.} & \textbf{Mean $S_{\mathrm{pers}}$} & \textbf{Beat clim.} & \textbf{Mean $R^2_{\mathrm{clim}}$} \\
 \midrule
-7 days & none & 0/50 & 50/50 & $+0.415$ & 14/50 & $-0.0153$ \\
- & PCMCI & \textbf{24/50} & 50/50 & $+0.416$ & 19/50 & $-0.0151$ \\
+7 days & none & 0/50 & 50/50 & $+0.415$ & 14/50 & $-0.015$ \\
+ & PCMCI & \textbf{24/50} & 50/50 & $+0.416$ & \textbf{19/50} & $-0.015$ \\
 \midrule
 1 day & none & 0/50 & 0/50 & $-1.527$ & 50/50 & $+0.720$ \\
  & PCMCI & \textbf{36/50} & 3/50 & $\mathbf{-1.327}$ & 50/50 & $\mathbf{+0.745}$ \\
@@ -294,204 +179,140 @@ Table~\ref{tab:stagec} and Figure~\ref{fig:stagec7} compare the PCMCI prior in r
 \end{tabular}
 \end{table}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{09_stage_c_pcmci_vs_none.png}
-\caption{Stage~C at the 7-day lead, full pool: number of regions that beat climatology and persistence (left) and mean skill scores (right), with and without the PCMCI restrict prior.}
-\label{fig:stagec7}
-\end{figure}
+\paragraph{The prior makes source selection informative.} In the full pool, where the unguided splitter is uninformative in every region, the restrict prior yields informative splitters in 24 regions at 7 days and 36 at 1 day, without loss of accuracy.
 
-At seven days the prior has \textbf{no measurable effect on skill}. Per region, 23 improve and 27 worsen in $R^2_{\mathrm{clim}}$; the median change is $-0.010$, the mean change $-0.0002$ in $R^2_{\mathrm{clim}}$ and $+0.001$ in $S_{\mathrm{pers}}$, and the Wilcoxon signed-rank test gives $p=0.56$. The number of regions that beat climatology rises from 14 to 19, but with mean $R^2_{\mathrm{clim}}$ unchanged this reflects small movements of regions near zero rather than a systematic gain. Hypothesis~\ref{hyp:h3} is not supported.
-
-The prior does have a large effect on \emph{source selection}: the number of informative splitters rises from 0 to 24 of 50. With the prior, the restricted pool contains the target and its prior regions, about three candidates instead of fifty, which is the regime in which the splitter can discriminate (Section~\ref{sec:res-pool}). This shows that the graph turns an uninformative full-pool splitter into one that makes distinct choices, without loss of accuracy. It is, however, expected from the pool size alone, and it does not by itself show that the graph's choice of regions is better than another choice of the same size.
-
-\subsection{One-day lead}
-At one day, the picture changes (Table~\ref{tab:stagec}, Figure~\ref{fig:stagec1}). The prior improves skill relative to persistence in \textbf{32 of 50 regions}, with a median improvement of $+0.40$ in $S_{\mathrm{pers}}$ and $+0.048$ in $R^2_{\mathrm{clim}}$; the mean $S_{\mathrm{pers}}$ improves from $-1.527$ to $-1.327$ and the mean $R^2_{\mathrm{clim}}$ from $0.720$ to $0.745$. Across regions, the Wilcoxon signed-rank test gives $p=0.049$ for $S_{\mathrm{pers}}$ and the sign test $p=0.065$. The median ratio of the expert's MSE with and without the prior is $0.83$. Region 22, the worked example, improves from $S_{\mathrm{pers}}=-0.60$ to $-0.05$. The number of informative splitters rises from 0 to 36.
+\paragraph{One-day lead: skill improves.} The prior improves skill in \textbf{32 of 50 regions} (Figure~\ref{fig:stagec1}), with median gains of $+0.40$ in $S_{\mathrm{pers}}$ and $+0.048$ in $R^2_{\mathrm{clim}}$ (Wilcoxon $p=0.049$) and a median 17\% reduction in MSE. Region 22 improves from $S_{\mathrm{pers}}=-0.60$ to $-0.05$. Skill against persistence is negative at one day for both models because tomorrow's OLR is very close to today's; both are clearly skilful against climatology ($R^2_{\mathrm{clim}}>0.7$).
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{10_stage_c_lead1.png}
-\caption{Stage~C at the 1-day lead, full pool: per-region skill with the PCMCI restrict prior against skill without a prior, for skill relative to persistence (left) and $R^2$ relative to climatology (right). Points above the diagonal improve with the prior; colour shows the number of outside regions in the prior. Generated for this thesis from the saved Stage~C result files.}
+\includegraphics[width=0.92\textwidth]{10_stage_c_lead1.png}
+\caption{One-day lead, full pool: per-region skill with the PCMCI prior against skill without a prior. Points above the diagonal improve; colour gives the number of outside regions in the prior.}
 \label{fig:stagec1}
 \end{figure}
 
-Negative skill against persistence at one day is expected: OLR tomorrow is very close to OLR today, and neither model fully exploits this because the target's own history reaches the expert only when the splitter selects it. Both models are nonetheless clearly skilful relative to climatology ($R^2_{\mathrm{clim}}>0.7$ on average, 50 of 50 regions).
+\paragraph{Seven-day lead: unchanged.} At 7 days, skill is unchanged (23 regions better, 27 worse; mean $S_{\mathrm{pers}}$ $+0.416$ versus $+0.415$; Figure~\ref{fig:stagec7}), although 19 rather than 14 regions beat climatology. This follows from the graph's time scale: its outside links act within one or two days, so they describe exactly the information a 1-day forecast can use, but a source's state seven days before the target adds little. The graph identifies the right \emph{neighbours}, while a 7-day forecast needs week-ahead \emph{precursors}.
 
-\subsection{Is the one-day gain due to the graph or to the smaller pool?}
-Table~\ref{tab:prior-size} groups the regions by the number of outside regions in their prior. The two targets with an empty prior, which are restricted to their own region only, improve most: their mean $S_{\mathrm{pers}}$ changes from $-0.857$ to $+0.519$, and they account for two of the three regions that beat persistence with the prior. Targets with a single outside driver become worse on average, from $-1.628$ to $-2.477$, whereas targets with two or more improve.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{09_stage_c_pcmci_vs_none.png}
+\caption{Seven-day lead, full pool: regions beating each baseline (left) and mean scores (right), with and without the PCMCI restrict prior.}
+\label{fig:stagec7}
+\end{figure}
+
+\paragraph{Dependence on prior size.} The one-day gain varies with prior size. The two targets with an empty prior, which are restricted to their own region, improve most ($S_{\mathrm{pers}}$ from $-0.86$ to $+0.52$); targets with two or more prior regions improve on average ($-1.53\to-0.91$ for two, $-1.53\to-1.22$ for three or more); and targets with a single prior region worsen ($-1.63\to-2.48$), because the splitter must then choose between the target's own history and its single driver. Comparing with random priors of equal size, the next step of the experimental programme, will separate the contribution of the graph's choice of regions from that of the smaller pool.
+
+\section{Drift Detection (RQ4)}
+\label{sec:res-drift}
+
+Table~\ref{tab:drift} reports the four detector settings on an abrupt shift (the 1997--98 El Ni\~{n}o) and a gradual shift (2013--2022) at three regions.
 
 \begin{table}[htbp]
 \centering
-\caption{Mean 1-day skill relative to persistence by number of outside regions in the prior, full pool.}
-\label{tab:prior-size}
-\small
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{cccc}
+\caption{Drift detection latency (days from the start of the shift window to the first alarm in it) and false-alarm rate (alarms per year outside all known shift events).}
+\label{tab:drift}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{llcccc}
 \toprule
-\textbf{Outside regions in prior} & \textbf{Targets} & \textbf{No prior} & \textbf{PCMCI restrict} \\
+\textbf{Region} & \textbf{Shift} & \textbf{Ch.\,1 error} & \textbf{Ch.\,2 structure} & \textbf{Fused OR} & \textbf{Fused AND} \\
 \midrule
-0 & 2 & $-0.857$ & $+0.519$ \\
-1 & 13 & $-1.628$ & $-2.477$ \\
-2 & 24 & $-1.528$ & $-0.908$ \\
-$\ge$3 & 11 & $-1.530$ & $-1.218$ \\
+22 & abrupt 1997--98 & 159 d & \textbf{35 d} & 35 d & missed \\
+   & gradual 2013--22 & 966 d & \textbf{181 d} & 181 d & 966 d \\
+29 & abrupt 1997--98 & 223 d & \textbf{92 d} & 92 d & 235 d \\
+   & gradual 2013--22 & 1{,}158 d & \textbf{117 d} & 117 d & 1{,}195 d \\
+12 & abrupt 1997--98 & \textbf{95 d} & 123 d & 95 d & 123 d \\
+   & gradual 2013--22 & \textbf{70 d} & 100 d & 70 d & 100 d \\
+\midrule
+\multicolumn{2}{l}{False alarms per year (22 / 29 / 12)} & 0.17 / 0.34 / 1.04 & 1.62 / 2.25 / 2.19 & 1.78 / 2.59 / 3.23 & 0.17 / 0.34 / 0.94 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-This pattern shows that the size of the restricted pool, and in particular whether the target's own region is effectively forced into the forecast, strongly influences the outcome. A target restricted to itself is a near-persistence model, which is very hard to beat at one day. A target restricted to itself and one other region has a selected fraction of $\rho_{\mathrm{top}}=0.5$, so the splitter selects exactly one of the two, and when it selects the outside region the target's own strong persistence is lost. These effects are properties of the restricted pool, not of which regions the graph chose. Consequently, the one-day improvement over the no-prior model is established, but its attribution to the causal content of the graph requires the matched random-prior control, in which each target receives the same number of randomly chosen regions in the same mode and pool. That comparison answers RQ4 and is the first item of the continuing programme (Section~\ref{sec:conc-future}).
+All shifts are detected by the OR fusion at every region. At regions 22 and 29 the causal-structure channel detects the abrupt El Ni\~{n}o shift 2.4--4.5 times sooner than the error channel, and the gradual shift 5.3--9.9 times sooner, which supports H4: watching the causal structure can reveal a change before it shows in the forecast error. At region 12 the error channel is faster. The structure channel raises more false alarms, so the fusion rule is a genuine trade-off between speed (OR) and caution (AND).
 
-\subsection{Why the graph helps at one day and not at seven}
-The contrast between leads follows from the graph's structure. Its outside links act at one or two days. At a one-day lead, a source region's state at the issue time is exactly the information that the link describes, so restricting the forecaster to the graph's sources concentrates it on relevant, usable information. At a seven-day lead, the same sources are coupled to the target on a time scale much shorter than the lead, and their state at the issue time says little more about the target a week later than the other candidates do. The graph identifies the right \emph{neighbours} but not the right \emph{precursors} for a week ahead. A graph built with $\taumin=7$, which tests only links usable at that lead, is the direct test of whether week-ahead precursors exist in this representation.
+\section{Expert Lifecycle (RQ4)}
+\label{sec:res-lifecycle}
 
-\subsection{Answers to RQ3 and RQ4}
-For RQ3, at the seven-day lead for which the graph was intended, the validated graph does not change forecast skill, while it does make the splitter's source selection discriminative. At one day, it improves skill over the no-prior model in a majority of regions. For RQ4, the comparison with the no-prior model is established; the comparisons with random and correlation priors of equal size, which determine whether the causal content of the graph is responsible, remain to be measured. The core Phase~1 hypothesis, that a validated causal graph improves source selection \emph{and} forecast skill on unseen years, is therefore not yet confirmed: the graph is reliable, and its forecasting benefit is so far demonstrated only against the no-prior model and only at short lead.
+Over 1979--2022, the lifecycle handled 49--61 regime changes per region. In \textbf{104 of 171} (61\%) an archived expert matched the new regime and was reactivated instead of a fresh expert being trained (Figure~\ref{fig:timeline}): regimes recur, and the archive reuses what was learned about them, supporting H5.
 
-\section{Regional and Temporal Breakdown}
-\label{sec:res-breakdown}
-
-At seven days the per-region changes are small and symmetric around zero, with no consistent geographic pattern. At one day, improvements are spread across the domain and concentrate among targets with two or more prior regions; deteriorations concentrate among targets with a single prior region. Region-by-region differences come from a single training seed and include seed-to-seed variability that has not yet been quantified. A breakdown by test year and by BSISO phase would require enough scored days per category to give stable estimates; with 1{,}989 test days over ten seasons, a year-by-year breakdown is possible but noisy, and it is included in the protocol for the multi-seed runs.
-
-\section{Ablation Analysis}
-\label{sec:res-ablation}
-
-\subsection{Alternative splitter objectives}
-Two alternative selection mechanisms adapted from the invariant-learning literature, one sharpening score discrimination directly (CIA) and one using iterative sparsification (GSINA), were compared with the plain invariance-trained splitter on region 22 under identical settings (Table~\ref{tab:alt-splitters}). The plain splitter has the lowest forecast error and is the only one that clears the discrimination threshold, so it is the splitter used throughout.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{11_lifecycle_timeline.png}
+\caption{Expert lifecycle events, 1979--2022: reactivation of an archived expert (green) or spawning of a fresh expert (orange) at each detected regime change, for regions 22, 12 and 29.}
+\label{fig:timeline}
+\end{figure}
 
 \begin{table}[htbp]
 \centering
-\caption{Alternative splitter mechanisms, region 22, direct pool, identical settings.}
-\label{tab:alt-splitters}
-\small
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{lcc}
+\caption{Reactivation strategies: single best-matching archived expert vs a similarity-weighted blend of the top three.}
+\label{tab:pool-blend}
+\footnotesize
+\begin{tabular}{lccc}
 \toprule
-\textbf{Splitter} & \textbf{Forecast MSE} & \textbf{$\sigma_a$ (informative $\ge$ 0.02)} \\
+ & \textbf{Region 22} & \textbf{Region 12} & \textbf{Region 29} \\
 \midrule
-Plain invariance-trained splitter & \textbf{0.3207} & \textbf{0.0203} \\
-CIA (weight 1.0) & 0.3324 & 0.0026 \\
-GSINA (20 iterations) & 0.3364 & 0.0087 \\
+Blend beats single (events) & 30/49 (61\%) & 42/61 (69\%) & 41/61 (67\%) \\
+Mean MSE: single $\to$ blend & 0.368 $\to$ \textbf{0.352} & 0.422 $\to$ \textbf{0.402} & 0.384 $\to$ \textbf{0.376} \\
+Forgetting: single $\to$ blend & $-0.010\to\mathbf{-0.013}$ & $0.183\to\mathbf{0.170}$ & $0.092\to\mathbf{0.086}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Training budget}
-With the direct pool at seven days, training for 2 epochs instead of 5 reduces the number of informative splitters from 27 to 5 of 50, while forecast skill barely changes. Discrimination therefore needs a sufficient training budget, and evaluating a selection mechanism after too little training can make it appear to fail. All Phase~1 comparisons use the same budget of 5 epochs.
+Blending the three most similar archived experts beats reactivating the single best match on both forecast error and forgetting at all three regions (Table~\ref{tab:pool-blend}). Whether a reactivated expert should be warm-started from its archived weights or trained fresh depends on the region (Figure~\ref{fig:forget}): warm-starting gives lower forecast error in 28 of 34 events at region 22 and 24 of 36 at region 29, but lower forgetting only at region 29.
 
-\subsection{Season versus year-round training}
-Restricting target days to the BSISO season changes the no-prior results only slightly (Table~\ref{tab:pool}): skill relative to persistence rises from about $+0.40$ to $+0.41$, and the number of informative splitters in the direct pool from 27 to 30. The seasonal restriction is therefore not the source of any large change in the forecasting results; its main role is to make the graph specific to the BSISO regime.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.62\textwidth]{ppt_forgetting_warm_vs_fresh_3regions_fixed.png}
+\caption{Average forgetting (lower is better) when a reactivated expert is warm-started from its archived weights or trained fresh.}
+\label{fig:forget}
+\end{figure}
 
-\subsection{Graph-level ablations}
-The validation pipeline itself provides ablations: removing the decoys changes the graph by 19 links (536 vs 517); removing B2 would add 3 links to the prior; B3 does not remove links at $k^\ast=10$; and B4 identifies 60 of 157 outside links as resolution-sensitive. The graph-level ablations listed in Section~\ref{sec:exp-grid} extend this analysis.
-
-\section{Stage D: Temporal Stability of the Causal Structure (RQ5)}
+\section{Stage D: Structural Drift of the PCMCI Graph}
 \label{sec:res-staged}
 
-The Ni\~{n}o-3.4 proxy computed from the project's own SST matches the known ENSO phase in 22 of 24 labelled years; 1989 and 2008 are misclassified. Table~\ref{tab:staged} and Figure~\ref{fig:staged} report the causal-signature distance between consecutive windows.
-
-\begin{table}[htbp]
-\centering
-\caption{Stage~D: causal-signature distance between consecutive windows and its relation to ENSO phase changes.}
-\label{tab:staged}
-\footnotesize
-\renewcommand{\arraystretch}{1.2}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.6cm}>{\centering\arraybackslash}p{1.7cm}>{\centering\arraybackslash}p{2.6cm}>{\centering\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}X}
-\toprule
-\textbf{Window} & \textbf{Parents per window} & \textbf{$\bar\Delta$: ENSO phase changed vs not} & \textbf{Mann--Whitney $p$} & \textbf{STARS alarms} \\
-\midrule
-1 season & 1.1--1.3 & 0.164 vs 0.151 & 0.20 & Mean series: 2004, 2011, 2016. Per target: 55 alarms, 76\% in phase-change years (67\% of years have one); 13 in stable years \\
-3 seasons & 1.6--2.0 & 0.200 vs 0.207 & 0.76 & Mean series: none. Per target: 21 alarms, 43\% in phase-change years; 12 in stable years \\
-\bottomrule
-\end{tabularx}
-\end{table}
+A Ni\~{n}o-3.4 proxy computed from the project's own SST matches the known ENSO phase in 22 of 24 labelled years. With one-season windows, the parent-set distance is 0.164 when the ENSO phase changes and 0.151 when it does not (Mann--Whitney $p=0.20$); with three-season windows it is 0.200 versus 0.207 ($p=0.76$). Each window has only one or two parents per target, so set membership changes mainly through sampling noise (Figure~\ref{fig:staged}).
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{08_stage_d_drift.png}
-\caption{Stage~D: mean causal-signature distance ($1-$Jaccard of parent sets, averaged over 50 targets) between consecutive one-season (top) and three-season (bottom) windows, with El Ni\~{n}o (red) and La Ni\~{n}a (blue) seasons shaded and STARS regime-shift alarms marked.}
+\caption{Stage~D: mean parent-set distance between consecutive one-season (top) and three-season (bottom) windows, with El Ni\~{n}o (red) and La Ni\~{n}a (blue) seasons shaded and STARS alarms dashed.}
 \label{fig:staged}
-\end{figure}
+\end{figure} Unlike the splitter-score signal of Section~\ref{sec:res-drift}, the discrete PCMCI parent set is therefore not a reliable regime signal at these window lengths; longer windows and strength-based distances are the natural next step.
 
-The distance is not significantly larger when the ENSO phase changes than when it does not, for either window length. With one-season windows, 76\% of per-target alarms fall in years with a phase change, but 67\% of all years have one, so the alarms are only marginally more frequent than chance. With three-season windows, the relation disappears. The 2016 alarm of the mean series coincides with the end of the 2015--16 El Ni\~{n}o, but a single coincidence is not evidence.
-
-The reason is visible in the parent counts: each window has only one or two parents per target, mostly the target's own OLR plus whichever outside link happens to pass FDR in that window. With so few parents, the set changes from window to window mainly through sampling noise, and Jaccard distance between such small sets is dominated by single additions or removals. Hypothesis~\ref{hyp:h5} is not supported. As constructed, the causal-signature distance is not reliable enough to trigger expert adaptation, which shapes the Phase~2 design (Chapter~\ref{chap:phase2}). Longer windows with a fixed or rolling reference, and a distance based on link strengths rather than set membership, are the natural refinements.
-
-\section{Computational Cost and Scalability}
-\label{sec:res-cost}
-
-The vectorised PCMCI makes the full-pool analysis practical: 900{,}000 candidates for 50 targets in about 23 minutes, and the complete graph pipeline, including a 550-node decoy pass and a 596-node second resolution, in about 2.5 hours on one workstation. The cost grows roughly linearly with the number of candidates per target and with the number of targets, which makes a 100-region or multi-dataset analysis feasible on the same hardware. The forecasting experiments cost about 20 minutes per 50-region configuration with 12 workers; the full 27-configuration grid is a few hours of computation, and multi-seed repetition multiplies this by the number of seeds.
-
-\section{Error Analysis and Failure Cases}
-\label{sec:res-errors}
-
-\paragraph{Seven-day forecasts and climatology.} At seven days, every model loses to climatology on average by about 0.015--0.02 in $R^2$. A seven-day OLR anomaly in a single region of about 275\,km scale is difficult to predict, and a small model with a 4{,}000-sample training budget cannot exploit the slow, weak signals that remain. The relevant comparison in this thesis is between source-selection strategies under identical conditions, but the absolute level indicates the room that a better forecaster or a lead-matched graph has to work with.
-
-\paragraph{Targets without outside drivers.} Regions 13 and 42 have no validated outside driver. Their restricted forecasters see only their own region, which at one day is the strongest information available and at seven days is little better than any other.
-
-\paragraph{Targets with a single driver.} At one day, the 13 targets with one outside driver deteriorate under the restrict prior. With two candidates and $\rho_{\mathrm{top}}=0.5$, the splitter must choose between the target's own history and its single driver, and choosing the driver discards the strong persistence signal. This is a property of the interaction between the selection rule and a very small pool, and it suggests that the initialise and regularise modes, or a rule that always allows the target's own history, may be better suited to very small priors.
-
-\paragraph{Resolution-sensitive links.} Fifteen targets fall below the persistence threshold, and PW and h850 links persist least. These links are kept in the prior with a flag. A stricter prior that excludes B4-flagged links is a further variant that can be tested with the same infrastructure.
-
-\section{Interpretation of Positive, Neutral and Negative Outcomes}
+\section{Summary of Findings}
 \label{sec:res-interpret}
-
-Table~\ref{tab:hyp-outcome} summarises the outcome of each hypothesis.
 
 \begin{table}[htbp]
 \centering
-\caption{Outcome of the Phase~1 hypotheses.}
+\caption{Outcome of the hypotheses.}
 \label{tab:hyp-outcome}
 \footnotesize
-\renewcommand{\arraystretch}{1.25}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.4cm}}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.6cm}}
 \toprule
 \textbf{Hypothesis} & \textbf{Evidence} & \textbf{Outcome} \\
 \midrule
-H\ref{hyp:h1} Sparsity and credibility & Decoy rate 0\%; 3 of 536 links (0.6\%) exceed speed limits & Supported \\
-H\ref{hyp:h2} Resolution persistence & 33 of 48 targets with $\Pi_r\ge 0.5$; mean 0.62 & Supported \\
-H\ref{hyp:h3} Predictive usefulness (7 days) & No change in skill (Wilcoxon $p=0.56$); discrimination 0 $\to$ 24 & Not supported \\
-\quad at 1 day (secondary) & Skill improves in 32 of 50 regions; discrimination 0 $\to$ 36 & Supported vs no prior \\
-H\ref{hyp:h4} Causal specificity & Random- and correlation-prior comparisons pending & Open \\
-H\ref{hyp:h5} Regime sensitivity & $p=0.20$ and $0.76$ & Not supported \\
+H1 Credibility & 0/250 decoys; 3/536 speed violations & Supported \\
+H2 Resolution persistence & 33/48 targets $\ge$ 0.5; mean 0.62 & Supported \\
+H3 Graph prior helps & Informative splitters 0 $\to$ 24 (7 d) and 0 $\to$ 36 (1 d); 1-day skill better in 32/50 regions; 7-day skill unchanged & Supported at 1 day \\
+H4 Earlier detection & Structure channel 2.4--9.9$\times$ faster at regions 22 and 29 & Supported at 2 of 3 regions \\
+H5 Regime reuse & 104/171 changes reactivated an archived expert; blend best & Supported \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The neutral and negative outcomes are informative. The neutral seven-day result, combined with the short lags of the graph, points to a mismatch between the time scale of the discovered dependencies and the forecast lead, rather than to a failure of the graph or of the splitter. The negative drift result shows that set-based causal signatures from short windows are dominated by sampling noise. Both findings have concrete consequences for the method, which are carried into Phase~2.
-
-\section{Threats to Validity and Limitations}
+\section{Limitations}
 \label{sec:res-validity}
 
-\paragraph{No ground truth.} The validation checks can reject a bad graph but cannot prove a graph correct. Every causal statement in this thesis is a statement about conditional dependence under the stated assumptions.
-
-\paragraph{Statistical power.} With 18{,}000 candidates per target on strongly autocorrelated daily data, some real links will be missed and some false links retained, even with FDR control.
-
-\paragraph{Hidden common drivers.} PCMCI assumes that all common drivers are among the nodes. BSISO phase, ENSO, extratropical influences and sub-regional moisture processes are only partly captured by 300 regional means.
-
-\paragraph{Field choice within a region.} The fields of a region move together with the same wave, so which field PCMCI selects can change with small changes in the data. Claims are therefore made at the level of source regions.
-
-\paragraph{Partly circular regions.} Regions were clustered on OLR co-variability and then used to find OLR links. The effect is to make between-region OLR links harder to find, but the partition is not independent of the target.
-
-\paragraph{Climatology overlap.} The upstream anomaly climatology was computed over 1979--2014, which overlaps the test period by two years. All compared models share it, so the comparisons between them are unaffected, but absolute skill values may be very slightly optimistic.
-
-\paragraph{Single seed.} All forecasting comparisons use one training seed. Per-region differences of the size seen at seven days are within the range that seed variability can produce, and the one-day differences, although consistent across most regions, should be confirmed with several seeds.
-
-\paragraph{Weak seven-day skill.} At seven days the models lose to climatology on average, so the comparison between priors takes place in a regime of low absolute skill.
-
-\paragraph{Region-scale statistical claims.} A statement such as "h850 in region 27 drives OLR in region 22 at one to three days" is a statistical statement about region means, not a description of a physical mechanism.
-
-\paragraph{External validity.} The graph is estimated from one data archive, one partition and one season definition. Its stability across data sources, time periods and the full year is part of the continuing programme.
+\begin{itemize}
+  \item \textbf{No ground truth.} The checks can reject a bad graph but cannot prove a graph correct; every causal claim is a statement of conditional dependence between region means.
+  \item \textbf{Hidden drivers and power.} PCMCI assumes all common drivers are observed; BSISO phase, ENSO and moisture are only partly captured. With 18{,}000 candidates per target, some links are missed and some false links remain.
+  \item \textbf{Time-scale match.} The validated links act within one or two days, shorter than the 7-day lead; a graph built with lags of at least seven days is needed for week-ahead guidance.
+  \item \textbf{Evaluation scope.} The forecasting comparisons use a single training seed and compare against the no-prior model; the drift and lifecycle results cover three regions. The upstream climatology (1979--2014) overlaps the test period by two years.
+  \item \textbf{Absolute skill at 7 days.} At seven days the models beat persistence everywhere but not climatology on average ($R^2_{\mathrm{clim}}\approx-0.015$).
+\end{itemize}
 
 \section{Implications for Phase 2}
 \label{sec:res-implications}
 
-The Phase~1 results lead to three groups of conclusions for the India-focused extension:
-\begin{itemize}
-  \item \textbf{Keep:} the validation pipeline (decoys, physical lag mask and resolution persistence), which runs at scale and gives interpretable diagnostics; the activity-based season restriction for target days; and a region-level prior, which matches the granularity at which source claims are reliable.
-  \item \textbf{Change:} build the graph with lags matched to the forecast horizon ($\taumin\ge L$); select the prior size by forecast-horizon skill or by comparison with random sources; and keep the target's own history available when the prior is very small.
-  \item \textbf{Do not yet rely on:} set-based causal-signature distance from short windows as a trigger for expert adaptation; error-based drift signals, or strength-based structural distances over longer windows, are better candidates.
-\end{itemize}
-
-\section{Chapter Summary}
-\label{sec:res-summary}
-
-The Phase~1 graph is sparse, short-lag and largely regional, and it passes every validation check that can reject it: no decoy is selected, 3 of 536 links violate physical speed limits, and 62\% of outside links persist at doubled resolution. Used as a restrict prior in the full pool, it makes the splitter's source scores discriminative at both leads. It leaves seven-day skill unchanged and improves one-day skill over the no-prior model in 32 of 50 regions. Whether the one-day gain reflects the graph's choice of regions, rather than the reduced pool, is determined by the matched random-prior control. The causal structure estimated from short windows does not track ENSO. These results answer RQ1 and RQ2 positively, answer RQ3 with a lead-dependent result, leave RQ4 open, and inform RQ5, which the next chapter develops.
+Phase~2 keeps the validation pipeline (decoys, speed mask, persistence), the activity-based season and the region-level prior; builds graphs with lags matched to the forecast lead; uses the dual-channel detector with continuous structure signals; and adopts pooled reactivation of archived experts as the default lifecycle action.
